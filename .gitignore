@@ -240,7 +240,7 @@ out
 gen
 ### Images template
 # JPEG
-*.jpg
+# *.jpg # commentato per via della sezione note. In caso possiamo togliere direttaemnte tutto il template
 *.jpeg
 *.jpe
 *.jif

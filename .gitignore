@@ -1,7 +1,5 @@
 # specifici per il nostro progetto
-*.csv
 *.rds
-
 
 ### CVS template
 /CVS/*

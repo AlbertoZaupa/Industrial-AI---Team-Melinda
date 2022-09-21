@@ -1,0 +1,75 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+library(readr)
+library(tidymodels)
+
+dataset <- read_csv("CSV/Cella_1.csv")
+
+# rinomina
+names(dataset) <- gsub(pattern = "Cella\\d", replacement = '', x = names(dataset))
+
+# poi decidiamo come gestirli
+dataset <- drop_na(dataset)
+
+
+summary(dataset)
+```
+
+remove unused parameters
+```{r}
+dataset$TemperaturaMandataGlicoleNominale <- NULL
+
+
+
+```
+
+
+test split
+
+```{r}
+K_FOLDS <- 10
+
+set.seed(0)
+
+ids <- sample(seq_len(nrow(dataset))) # shuffle
+test_ids <- split( ids, cut_number(ids, K_FOLDS, labels = FALSE))
+```
+
+
+# Stupid Linear regression
+```{r}
+library(glmnet)
+library(tidyverse)
+library(tidymodels)
+
+# cv
+errors <- list()
+
+for(i in seq_along(test_ids)){
+
+  test_dataset <- dataset[unlist(test_ids[i]),]
+  train_dataset <- dataset[-unlist(test_ids[i]),]
+
+  # no tuning needed
+
+  model <- glm(TemperaturaCellaMediata ~ .,data = train_dataset)
+  fits <- predict(model, newdata = test_dataset)
+  er <- rmse(data = test_dataset, truth = test_dataset$TemperaturaCellaMediata, estimate = fits)
+  errors <- append(errors, er$.estimate)
+
+}
+
+
+
+summary(model)
+plot(model)
+
+mean(unlist(errors))
+
+```
+
+

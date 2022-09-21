@@ -10,7 +10,7 @@ library(readr)
 # polish data
 
 
-month_data <- read_delim(file = "Ipogeo1209-1909.csv", delim = ";")
+month_data <- read_delim(file = "../Ipogeo1209-1909.csv", delim = ";")
 month_data <- month_data[, -1] # colonna degli ID
 ```
 # Suddividere
@@ -118,5 +118,5 @@ rm(cella, i, path)
 ```
 ```{r}
 # salviamo i dati
-saveRDS(ipogei, "checkpoints/ipogei.rds")
+saveRDS(ipogei, "../checkpoints/ipogei.rds")
 ```

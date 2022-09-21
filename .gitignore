@@ -2,7 +2,7 @@
 *.rds
 
 ### CVS template
-/CVS/*
+CVS/*
 **/CVS/*
 .cvsignore
 */.cvsignore

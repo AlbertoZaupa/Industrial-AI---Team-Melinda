@@ -6,6 +6,7 @@
 **/CVS/*
 .cvsignore
 */.cvsignore
+.*.csv
 
 ### C++ template
 # Prerequisites

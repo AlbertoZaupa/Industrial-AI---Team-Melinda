@@ -1,0 +1,90 @@
+---
+title: "Read challenge data (NB: Work in progress)"
+output: html_notebook
+---
+
+Offline:
+```{r}
+library(readr)
+
+# polish data
+
+
+month_data <- read_delim(file = "Ipogeo1209-1909.csv", delim = ";")
+month_data <- month_data[, -1] # colonna degli ID
+```
+
+
+dividere i dati per ipogeo
+```{r}
+library(tidyverse)
+
+TENTATIVI <- 100
+
+ipogei <- list() # il lotto 1 sarà in posizione 1 ecc
+
+for (i in 1:TENTATIVI) {
+  # seleziona le colonne del lotto i
+  celle <- list() # lista per le celle
+  pattern <- paste0("Ipogeo", ifelse(i == 1, '', i),"_\\w") # per debug
+  data <- month_data %>% select(Date, matches(pattern))
+  # esempio data: tutte le variabili che iniziano con "Ipogeo2"
+
+  # rinomina le colonne
+  names(data) <- gsub(pattern = "Ipogeo.*_C", replacement = "C", x = names(data))
+
+  if (ncol(data) == 1) { # se sono finiti i lotti, quindi c'è solo la data
+    break # esci dal ciclo
+  } else {
+
+    # ora dividiamo anche le celle
+
+    # prima prendiamo le colonne comuni a tutte le celle, filtrando quindi i quadri specifici e le variabili delle celle
+
+    # nessuna colonna comune
+
+    # non sapendo a priori il numero delle celle, e dato che hanno i nomi in progressivo da un lotto all'altro, si va a tentativi
+    for (j in 1:TENTATIVI) {
+
+      # selezioniamo i dati della cella corrispondente
+      pattern <- paste0("Cella", j,"[A-Z]")
+      cella <- data %>% select(matches(pattern))
+
+      if (ncol(cella) == 0) { # nessun match
+        next # continua
+      }
+      cella <- as.data.frame(cella)
+      celle <- append(celle, list(cella))
+    }
+
+  }
+  ipogei <- append(ipogei, list(celle)) # aggiungi l'insieme di celle alla lista dei lotti
+
+}
+
+```
+Se ha avuto successo, meglio liberare i dati di prima che non servono piu'
+```{r}
+rm(celle, cella, data, i, j, month_data, pattern)
+```
+Se vogliamo un csv per ogni cella, cosi' da semplificare il training
+```{r}
+library(readr)
+# percorso base dove tenere i csv
+path <- "./CSV/"
+i <- 1 # importante per il numero di cella. Si può ricavare anche dai dati, ma così è più veloce. Possiamo farlo perchè le celle vanno in numero progressivo anche cambiando lotto
+
+# spacchetta le celle a partire dalla struttura dei lotti
+celle <- unlist(ipogei, recursive = FALSE)
+
+for (cella in celle) {
+  write_csv(x = cella, file = paste0(path, "Cella_", i, ".csv")) # TODO: da modificare
+  i <- i + 1
+}
+# rimuove i file inutili
+rm(cella, i, path)
+```
+```{r}
+# salviamo i dati
+saveRDS(ipogei, "checkpoints/ipogei.rds")
+```

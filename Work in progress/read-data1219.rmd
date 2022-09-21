@@ -14,7 +14,36 @@ month_data <- read_delim(file = "Ipogeo1209-1909.csv", delim = ";")
 month_data <- month_data[, -1] # colonna degli ID
 ```
 
+Dividere direttamente
+```{r}
+# NB: questa versione dello script divide direttamente per celle, senza tenere conto dell'ipogeo
+# è stato fatto per velocizzare, se necessario verrà caricato l'altro script
 
+TENTATIVI <- 100 # non sappiamo esattamente quante celle ci sono
+celle <- list()
+
+# rinomina le colonne (toglie ipogeo)
+names(month_data) <- gsub(pattern = "Ipogeo.*_C", replacement = "C", x = names(month_data))
+
+for (i in 1:TENTATIVI) {
+  # seleziona le colonne della cella i
+  # lista per le celle
+  pattern <- paste0("Cella", i,"[A-Z]")
+  data <- month_data %>% select(Date, matches(pattern)) # dataframe con solo le colonne della cella
+  # esempio data: tutte le variabili che iniziano con "Ipogeo2"
+
+  if (ncol(data) == 1) { # se sono finite le celle, quindi c'è solo la data
+    break # esci dal ciclo
+  } else {
+    celle <- append(celle, list(as.data.frame(data)))
+  }
+
+}
+
+
+
+```
+-------------------------------------------------------------------------------------------------------------
 dividere i dati per ipogeo
 ```{r}
 library(tidyverse)
@@ -78,10 +107,10 @@ i <- 1 # importante per il numero di cella. Si può ricavare anche dai dati, ma 
 celle <- unlist(ipogei, recursive = FALSE)
 
 for (cella in celle) {
-  write_csv(x = cella, file = paste0(path, "Cella_", i, ".csv")) # TODO: da modificare
+  write_csv(x = cella, file = paste0(path, "Cella_", i, ".csv"))
   i <- i + 1
 }
-# rimuove i file inutili
+# rimuove i dati inutili
 rm(cella, i, path)
 ```
 ```{r}

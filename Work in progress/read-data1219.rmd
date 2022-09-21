@@ -3,7 +3,7 @@ title: "Read challenge data (NB: Work in progress)"
 output: html_notebook
 ---
 
-Offline:
+# Caricare i dati(Offline)
 ```{r}
 library(readr)
 
@@ -13,6 +13,9 @@ library(readr)
 month_data <- read_delim(file = "Ipogeo1209-1909.csv", delim = ";")
 month_data <- month_data[, -1] # colonna degli ID
 ```
+# Suddividere
+
+## Caso 1
 
 Dividere direttamente
 ```{r}
@@ -43,7 +46,7 @@ for (i in 1:TENTATIVI) {
 
 
 ```
--------------------------------------------------------------------------------------------------------------
+## Caso 2
 dividere i dati per ipogeo
 ```{r}
 library(tidyverse)
@@ -96,7 +99,7 @@ Se ha avuto successo, meglio liberare i dati di prima che non servono piu'
 ```{r}
 rm(celle, cella, data, i, j, month_data, pattern)
 ```
-Se vogliamo un csv per ogni cella, cosi' da semplificare il training
+Se vogliamo un csv per ogni cella partendo da questa struttura
 ```{r}
 library(readr)
 # percorso base dove tenere i csv

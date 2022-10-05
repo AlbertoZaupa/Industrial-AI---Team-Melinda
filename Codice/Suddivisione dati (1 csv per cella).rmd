@@ -9,8 +9,9 @@ library(readr)
 
 # polish data
 
+file <- "Dati originali/Ipogeo1209-1909.csv"
 
-month_data <- read_delim(file = "../Ipogeo1209-1909.csv", delim = ";")
+month_data <- read_delim(file = file, delim = ";")
 month_data <- month_data[, -1] # colonna degli ID
 ```
 # Suddividere
@@ -19,6 +20,7 @@ month_data <- month_data[, -1] # colonna degli ID
 
 Dividere direttamente
 ```{r}
+library(tidyverse)
 # NB: questa versione dello script divide direttamente per celle, senza tenere conto dell'ipogeo
 # è stato fatto per velocizzare, se necessario verrà caricato l'altro script
 
@@ -26,6 +28,7 @@ TENTATIVI <- 100 # non sappiamo esattamente quante celle ci sono
 celle <- list()
 
 # rinomina le colonne (toglie ipogeo)
+pattern <- "Ipogeo.*_C"
 names(month_data) <- gsub(pattern = "Ipogeo.*_C", replacement = "C", x = names(month_data))
 
 for (i in 1:TENTATIVI) {
@@ -33,6 +36,9 @@ for (i in 1:TENTATIVI) {
   # lista per le celle
   pattern <- paste0("Cella", i,"[A-Z]")
   data <- month_data %>% select(Date, matches(pattern)) # dataframe con solo le colonne della cella
+  # rimuove "Cellan" dai nomi
+  pattern <- paste0("Cella", i)
+  names(data) <- gsub(pattern = pattern, replacement = "", x = names(data))
   # esempio data: tutte le variabili che iniziano con "Ipogeo2"
 
   if (ncol(data) == 1) { # se sono finite le celle, quindi c'è solo la data
@@ -46,6 +52,19 @@ for (i in 1:TENTATIVI) {
 
 
 ```
+
+```{r}
+# converti in csv
+rm(data, file, month_data, pattern)
+
+path <- "CSV/"
+i <- 1
+for (cella in celle) {
+  write_csv(x = cella, file = paste0(path, "Cella_", i, ".csv"))
+  i <- i + 1
+}
+```
+
 ## Caso 2
 dividere i dati per ipogeo
 ```{r}

@@ -39,7 +39,7 @@ class CellCsvConverter:
 
 
 # test
-__name__ = "main"
+# __name__ = "main" # s/commentare questo
 if __name__ == "main":
     converter = CellCsvConverter()
     df = converter.Convert("./data/Cella_15.csv")

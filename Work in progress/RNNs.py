@@ -1,3 +1,6 @@
+from datetime import datetime
+
+import numpy as np
 import torch
 import torch.nn as nn
 from matplotlib import pyplot as plt
@@ -5,6 +8,15 @@ from matplotlib import pyplot as plt
 
 # Models
 # source: https://towardsdatascience.com/building-rnn-lstm-and-gru-for-time-series-using-pytorch-a46e5b094e7b
+
+# use GPU!
+if torch.cuda.is_available():
+    device = torch.device('cuda:0')
+else:
+    device = torch.device('cpu')
+print(device)
+
+
 class RNN(nn.Module):  # Basic Recurrent Neural Network
     def __init__(self, input_dim, hidden_dim, layer_dim, output_dim, dropout_prob):
         super(RNN, self).__init__()

@@ -17,7 +17,7 @@ dropout = 0.2
 n_epochs = 100
 learning_rate = 1e-3
 weight_decay = 1e-6
-neural_network_kind = "LSTM"
+neural_network_kind = "lstm"
 
 try:
     opts, args = getopt.getopt(argv, "hni:bHLelwd", ["network=", "input-file=", "batch=", "hidden-dim=", "layer-dim=",
@@ -31,7 +31,7 @@ for opt, arg in opts:
         print(f"""training(RNN).py -i csv_file_path
         Arguments: 
          -h, --help: elenca gli argomenti necessari
-         -n, --neural-network: uno tra RNN, LSTM e GRU (default: {neural_network_kind})
+         -n, --neural-network: uno tra rnn, lstm e gru (default: {neural_network_kind})
          -i, --input-file: percorso del file csv da passare come input
          -b, --batch: batch per il training (default: {batch_size})
          -H, --hidden-dim: numero di hidden layers (default: {hidden_dim})
@@ -82,7 +82,7 @@ model_params = {'input_dim': input_dim,
                 'output_dim': output_dim,
                 'dropout_prob': dropout}
 
-model = get_model('lstm', model_params)
+model = get_model(neural_network_kind, model_params)
 
 loss_fn = nn.MSELoss(reduction="mean")
 optimizer = optim.Adam(model.parameters(), lr=learning_rate, weight_decay=weight_decay)

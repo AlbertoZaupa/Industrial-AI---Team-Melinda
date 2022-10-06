@@ -20,7 +20,7 @@ weight_decay = 1e-6
 neural_network_kind = "lstm"
 
 try:
-    opts, args = getopt.getopt(argv, "hni:bHLelwd", ["network=", "input-file=", "batch=", "hidden-dim=", "layer-dim=",
+    opts, args = getopt.getopt(argv, "hnbHLelwdi:", ["network=", "input-file=", "batch=", "hidden-dim=", "layer-dim=",
                                                      "epochs=", "dropout=", "learning-rate=", "weight-decay"])
 except getopt.GetoptError:
     print("training(RNN).py -i csv_file_path")
@@ -60,6 +60,10 @@ for opt, arg in opts:
     elif opt in ("-d", "--dropout"):
         dropout = float(arg)
 
+if csv_file == '':
+    print("Missing argument: -i csv_path\nes: training(RNN).py -i csv_file_path")
+    sys.exit(2)
+
 converter = importer.CellCsvConverter()
 train_dataset, validation_dataset, test_dataset = converter.Convert_csv_to_Dataset(csv_file,
                                                                                    train_percentage=0.7,
@@ -73,6 +77,7 @@ test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False, dro
 test_loader_one = DataLoader(test_dataset, batch_size=1, shuffle=False, drop_last=True)
 
 input_dim = len(train_dataset)
+val_dim = len(validation_dataset)
 output_dim = 1
 
 
@@ -88,7 +93,8 @@ loss_fn = nn.MSELoss(reduction="mean")
 optimizer = optim.Adam(model.parameters(), lr=learning_rate, weight_decay=weight_decay)
 
 opt = Optimization(model=model, loss_fn=loss_fn, optimizer=optimizer)
-opt.train(train_loader, val_loader, batch_size=batch_size, n_epochs=n_epochs, n_features=input_dim)
+opt.train(train_loader=train_loader, val_loader=val_loader, batch_size=batch_size, n_epochs=n_epochs, train_features=input_dim,
+          val_features=val_dim)
 opt.plot_losses()
 
 predictions, values = opt.evaluate(test_loader_one, batch_size=1, n_features=input_dim)

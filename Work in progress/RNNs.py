@@ -156,13 +156,13 @@ class Optimization:
         # Returns the loss
         return loss.item()
 
-    def train(self, train_loader, val_loader, batch_size=64, n_epochs=50, n_features=1):
+    def train(self, train_loader, val_loader, batch_size=64, n_epochs=50, train_features=1, val_features=1):
         model_path = f'models/{self.model}_{datetime.now().strftime("%Y-%m-%d %H:%M:%S")}'
 
         for epoch in range(1, n_epochs + 1):
             batch_losses = []
             for x_batch, y_batch in train_loader:
-                x_batch = x_batch.view([batch_size, -1, n_features]).to(device)
+                x_batch = x_batch.view([batch_size, -1, train_features]).to(device)
                 y_batch = y_batch.to(device)
                 loss = self.train_step(x_batch, y_batch)
                 batch_losses.append(loss)
@@ -172,7 +172,7 @@ class Optimization:
             with torch.no_grad():
                 batch_val_losses = []
                 for x_val, y_val in val_loader:
-                    x_val = x_val.view([batch_size, -1, n_features]).to(device)
+                    x_val = x_val.view([batch_size, -1, val_features]).to(device)
                     y_val = y_val.to(device)
                     self.model.eval()
                     yhat = self.model(x_val)

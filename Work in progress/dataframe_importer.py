@@ -11,9 +11,8 @@ class CellDataset(Dataset):
     """Classe per Pytorch datasets"""
 
     def __init__(self, dataframe: pd.DataFrame, y_name="TemperaturaCelle"):
-        train_x = dataframe.drop(y_name,
-                                 axis=1).values  # seleziona tutti i valori tranne quelli della variabile che vogliamo fittare
-        train_y = dataframe[y_name].values  # seleziona solo i valori della variabile che vogliamo fittare
+        train_x = dataframe.drop(y_name, axis=1).values # seleziona tutti i valori tranne quelli della variabile che vogliamo fittare
+        train_y = dataframe[y_name].values # seleziona solo i valori della variabile che vogliamo fittare
 
         # trasforma in tensori di PyTorch
         self.x_train = torch.tensor(train_x)
@@ -58,29 +57,18 @@ class CellCsvConverter:
         else:
             return dataset[self.useful_variables]
 
-    def Convert_csv_to_Dataset(self,
-                               csv_path: str,
-                               train_percentage=0.8,
-                               validation_percentage=0.2) -> (Dataset, Dataset, Dataset):
-        """Converte il csv direttamente in Train, Validation e Test dataset.
+    def Convert_csv_to_Dataset(self, csv_path: str, train_percentage=0.8) -> (Dataset, Dataset):
+        """Converte il csv direttamente in Train e Test dataset. Se la train percentage è 1 allora ritorna la tupla (Train dataset, None)
            NB: i dati vengono importati senza shuffle"""
-        dataframe = self.Convert_csv_to_Dataframe(csv_path)  # converti il csv in pandas dataframe
-        validation_dataset = None
-        test_dataset = None
+        dataframe = self.Convert_csv_to_Dataframe(csv_path) # converti il csv in pandas dataframe
 
-        train_number = int(
-            len(dataframe.index) * train_percentage)  # serve a splittare. Essendo fatto per le RNN, non viene effettuato lo shuffle
+        train_number = int(len(dataframe.index) * train_percentage) # serve a splittare. Essendo fatto per le RNN, non viene effettuato lo shuffle
         train_dataset = CellDataset(dataframe.iloc[0:train_number], self.y)
-        train_rows = len(train_dataset)
-        if validation_percentage != 0:
-            train_percentage = 1 - validation_percentage
-            train_number = int(train_rows * train_percentage)
-            train_dataset = CellDataset(dataframe.iloc[0:train_number], self.y)
-            validation_dataset = CellDataset(dataframe.iloc[train_number:train_rows], self.y)
-        if train_dataset != 1.0:
-            test_dataset = CellDataset(dataframe.iloc[train_rows:], self.y)
+        if train_dataset == 1.0:
+            return train_dataset, None
+        test_dataset = CellDataset(dataframe.iloc[train_number:], self.y)
 
-        return train_dataset, validation_dataset, test_dataset
+        return train_dataset, test_dataset
 
 
 # test
@@ -90,6 +78,6 @@ if __name__ == "main":
     df = converter.Convert_csv_to_Dataframe("./data/Cella_15.csv")
     print(df)
 
-    dstrain, dsval, dstest = converter.Convert_csv_to_Dataset("./data/Cella_15.csv")
+    dstrain, dstest = converter.Convert_csv_to_Dataset("./data/Cella_15.csv")
     print(dstrain)
     print(dstest)

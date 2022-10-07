@@ -2,8 +2,10 @@
 Usage: script per la classe converter
 """
 import pandas as pd
+import numpy as np
 import torch
 from torch.utils.data import Dataset
+pd.options.mode.chained_assignment = None  # default='warn'
 
 
 # this assumes that we already have the single cell CSV
@@ -18,6 +20,8 @@ class CellDataset(Dataset):
         # trasforma in tensori di PyTorch
         self.x_train = torch.tensor(train_x)
         self.y_train = torch.tensor(train_y)
+        self.rows = len(self.y_train)
+        self.x_columns = len(dataframe.columns) - 1
 
     def __len__(self):
         return len(self.y_train)
@@ -58,13 +62,40 @@ class CellCsvConverter:
         else:
             return dataset[self.useful_variables]
 
+    def Sanitize(self, dataframe:pd.DataFrame, normalize:bool):
+
+        def Deal_with_na(dataframe:pd.DataFrame):
+            return dataframe.dropna()
+
+        def normalize_helper(data):
+            return (data - np.min(data)) / (np.max(data) - np.min(data))
+
+        def Normalize(dataframe:pd.DataFrame):
+
+            for (column_name, column_data) in dataframe.iteritems():
+                if column_name == self.y:
+                    continue
+                dataframe.loc[:, column_name] = normalize_helper(column_data)
+                if dataframe[column_name].isnull().any(): # erano tutti valori uguali
+                    dataframe.loc[:,column_name] = dataframe[column_name].fillna(0)
+
+            return dataframe
+
+        dataframe = Deal_with_na(dataframe)
+        if normalize:
+            dataframe = Normalize(dataframe)
+        return dataframe
+
     def Convert_csv_to_Dataset(self,
                                csv_path: str,
                                train_percentage=0.8,
-                               validation_percentage=0.2) -> (Dataset, Dataset, Dataset):
+                               validation_percentage=0.2,
+                               normalize=True) -> (Dataset, Dataset, Dataset):
         """Converte il csv direttamente in Train, Validation e Test dataset.
            NB: i dati vengono importati senza shuffle"""
         dataframe = self.Convert_csv_to_Dataframe(csv_path)  # converti il csv in pandas dataframe
+        if normalize:
+            self.Sanitize(dataframe,True)
         validation_dataset = None
         test_dataset = None
 

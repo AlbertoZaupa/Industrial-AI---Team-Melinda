@@ -134,18 +134,13 @@ def calculate_metrics(df):
 # TODO: rendere carino e fixare
 def plot_data(df:pd.DataFrame, metrics):
     # x = range(0, len(df)) # Sample data.
-    x = np.arange(0, len(df), 1)
-    fig, ax = plt.subplots(figsize=(5, 2.7), layout='constrained')
-    ax.plot(x, df.prediction, label='predicted')
-    ax.plot(x, df.values, label='actual')
-
-    ax.set_xlabel('minuti')  # Add an x-label to the axes.
-    ax.set_ylabel('temperature')  # Add a y-label to the axes.
-    ax.set_title("Grafico previsioni")  # Add a title to the axes.
-    ax.legend()  # Add a legend.
-    ax.text(0, 0, f"MAE: {metrics['mae']}, RMSE: {metrics['rmse']}, R2: {metrics['r2']}")
-    ax.imshow()
-    ax.close()
+    plt.plot(df.prediction, label="Predizione")
+    plt.plot(df.value, label="Valori reali")
+    plt.legend()
+    plt.title("Grafico previsioni")
+    plt.text(0, 0, f"MAE: {metrics['mae']}, RMSE: {metrics['rmse']}, R2: {metrics['r2']}")
+    plt.show()
+    plt.close()
 
 
 df = format_predictions(predictions, values)

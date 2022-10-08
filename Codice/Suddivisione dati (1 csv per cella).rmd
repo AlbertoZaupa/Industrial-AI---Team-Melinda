@@ -9,7 +9,7 @@ library(readr)
 
 # polish data
 
-file <- "Dati originali/Ipogeo1209-1909.csv"
+file <- "../Dati originali/Ipogeo1209-1909.csv.bk"
 
 month_data <- read_delim(file = file, delim = ";")
 month_data <- month_data[, -1] # colonna degli ID

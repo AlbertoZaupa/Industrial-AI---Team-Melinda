@@ -7,8 +7,8 @@ import pandas as pd
 import torch.optim as optim
 from torch.utils.data import DataLoader
 
-from Codice import dataframe_importer as importer
-from Codice.dataframe_importer import CellDataset
+import dataframe_importer as importer
+from dataframe_importer import CellDataset
 from RNNs import *
 import matplotlib.pyplot as plt
 
@@ -26,7 +26,7 @@ neural_network_kind = "lstm"
 
 try:
     opts, args = getopt.getopt(argv, "hnbHLelwdi:", ["network=", "input-file=", "batch=", "hidden-dim=", "layer-dim=",
-                                                     "epochs=", "dropout=", "learning-rate=", "weight-decay"])
+                                                     "epochs=", "dropout=", "learning-rate=", "weight-decay="])
 except getopt.GetoptError:
     print("training(RNN).py -i csv_file_path")
     sys.exit(2)
@@ -36,7 +36,7 @@ for opt, arg in opts:
         print(f"""training(RNN).py -i csv_file_path
         Arguments: 
          -h, --help: elenca gli argomenti necessari
-         -n, --neural-network: uno tra rnn, lstm e gru (default: {neural_network_kind})
+         -n, --network: uno tra rnn, lstm e gru (default: {neural_network_kind})
          -i, --input-file: percorso del file csv da passare come input
          -b, --batch: batch per il training (default: {batch_size})
          -H, --hidden-dim: numero di hidden layers (default: {hidden_dim})
@@ -134,18 +134,13 @@ def calculate_metrics(df):
 # TODO: rendere carino e fixare
 def plot_data(df:pd.DataFrame, metrics):
     # x = range(0, len(df)) # Sample data.
-    x = np.arange(0, len(df), 1)
-    fig, ax = plt.subplots(figsize=(5, 2.7), layout='constrained')
-    ax.plot(x, df.prediction, label='predicted')
-    ax.plot(x, df.values, label='actual')
-
-    ax.set_xlabel('minuti')  # Add an x-label to the axes.
-    ax.set_ylabel('temperature')  # Add a y-label to the axes.
-    ax.set_title("Grafico previsioni")  # Add a title to the axes.
-    ax.legend()  # Add a legend.
-    ax.text(0, 0, f"MAE: {metrics['mae']}, RMSE: {metrics['rmse']}, R2: {metrics['r2']}")
-    ax.imshow()
-    ax.close()
+    plt.plot(df.prediction, label="Predizione")
+    plt.plot(df.value, label="Valori reali")
+    plt.legend()
+    plt.title("Grafico previsioni")
+    plt.text(0, 0, f"MAE: {metrics['mae']}, RMSE: {metrics['rmse']}, R2: {metrics['r2']}")
+    plt.show()
+    plt.close()
 
 
 df = format_predictions(predictions, values)

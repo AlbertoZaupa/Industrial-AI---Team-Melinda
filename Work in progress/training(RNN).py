@@ -7,8 +7,8 @@ import pandas as pd
 import torch.optim as optim
 from torch.utils.data import DataLoader
 
-from Codice import dataframe_importer as importer
-from Codice.dataframe_importer import CellDataset
+import dataframe_importer as importer
+from dataframe_importer import CellDataset
 from RNNs import *
 import matplotlib.pyplot as plt
 
@@ -26,7 +26,7 @@ neural_network_kind = "lstm"
 
 try:
     opts, args = getopt.getopt(argv, "hnbHLelwdi:", ["network=", "input-file=", "batch=", "hidden-dim=", "layer-dim=",
-                                                     "epochs=", "dropout=", "learning-rate=", "weight-decay"])
+                                                     "epochs=", "dropout=", "learning-rate=", "weight-decay="])
 except getopt.GetoptError:
     print("training(RNN).py -i csv_file_path")
     sys.exit(2)
@@ -36,7 +36,7 @@ for opt, arg in opts:
         print(f"""training(RNN).py -i csv_file_path
         Arguments: 
          -h, --help: elenca gli argomenti necessari
-         -n, --neural-network: uno tra rnn, lstm e gru (default: {neural_network_kind})
+         -n, --network: uno tra rnn, lstm e gru (default: {neural_network_kind})
          -i, --input-file: percorso del file csv da passare come input
          -b, --batch: batch per il training (default: {batch_size})
          -H, --hidden-dim: numero di hidden layers (default: {hidden_dim})

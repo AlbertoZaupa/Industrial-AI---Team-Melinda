@@ -1,5 +1,7 @@
 # specifici per il nostro progetto
 *.rds
+*.bk
+*/models
 
 ### CVS template
 CVS/*

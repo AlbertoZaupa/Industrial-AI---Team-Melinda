@@ -138,6 +138,7 @@ class Optimization:
         self.optimizer = optimizer
         self.train_losses = []
         self.val_losses = []
+        self.model_name = ''
 
     def train_step(self, x, y):
         # Sets model to train mode
@@ -166,7 +167,9 @@ class Optimization:
         return loss.item()
 
     def train(self, train_loader, val_loader, batch_size=64, n_epochs=50, train_features=1, val_features=1):
-        model_path = f'models/{self.model}_{datetime.now().strftime("%Y-%m-%d %H:%M:%S")}'
+        model_name = f'{self.model}_{datetime.now().strftime("%Y-%m-%d %H:%M:%S")}'
+        model_path = 'models/'+model_name
+        self.model_name = model_name
 
         for epoch in range(1, n_epochs + 1):
             batch_losses = []
@@ -220,6 +223,8 @@ class Optimization:
                 # values.append(y_test.to(device).detach().numpy())
 
         return predictions, values
+    def last_validation_loss(self):
+        return self.val_losses[-1]
 
 
 

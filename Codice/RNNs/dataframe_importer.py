@@ -44,13 +44,15 @@ class CellCsvConverter:
         self.y = y
         self.delimiter = delimiter
         if useful_variables is None:
-            useful_variables = ['TemperaturaCelle', 'TemperaturaMandataGlicole',
-                                'TemperaturaRitornoGlicole', 'TemperaturaMele',
-                                'PercentualeAperturaValvolaMiscelatrice',
-                                'TemperaturaRoccia1', 'TemperaturaRoccia2', 'TemperaturaRoccia3',
-                                'TemperaturaRoccia4', 'Preventilazione', 'Postventilazione',
-                                'PompaGlicoleMarcia',
-                                'PercentualeVelocitaVentilatori']
+            useful_variables = ["PercentualeAperturaValvolaMiscelatrice"
+                ,"PercentualeVelocitaVentilatori",
+                                "PompaGlicoleMarcia",
+                                "Raffreddamento",
+                                "TemperaturaCelle",
+                                "TemperaturaMandataGlicole",
+                                "TemperaturaRitornoGlicole",
+                                "UmiditaRelativa",
+                                "VentilatoreMarcia"]
 
         self.useful_variables = useful_variables
 

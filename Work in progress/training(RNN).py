@@ -26,10 +26,13 @@ n_epochs = 100
 learning_rate = 1e-4
 weight_decay = 1e-6
 neural_network_kind = "lstm"
+test = 0
+plots = 1
 
 try:
-    opts, args = getopt.getopt(argv, "hnbHLelwdi:", ["network=", "input-file=", "batch=", "hidden-dim=", "layer-dim=",
-                                                     "epochs=", "dropout=", "learning-rate=", "weight-decay="])
+    opts, args = getopt.getopt(argv, "hnbHLelwdTpi:", ["network=", "input-file=", "batch=", "hidden-dim=", "layer-dim=",
+                                                     "epochs=", "dropout=", "learning-rate=", "weight-decay=","test=",
+                                                       "plots="])
 except getopt.GetoptError:
     print("training(RNN).py -i csv_file_path")
     sys.exit(2)
@@ -47,7 +50,9 @@ for opt, arg in opts:
          -e, --epochs: epoche per cui addestrare la rete (default: {n_epochs})
          -l, --learning-rate: rate di apprendimento della rete (default: {learning_rate})
          -w, --weight-decay: decadimento dei pesi (default: {weight_decay})
-         -d, --dropout: dropout dei neuroni (default: {dropout})""")
+         -d, --dropout: dropout dei neuroni (default: {dropout})
+        -t, --test: se si tratta di model assessment (0) o Model Selection (1). (default:{test})
+        -p, --plots: se stampare i grafici (1) o meno (0). Default: {plots} """)
         sys.exit(0)
     elif opt in ("-i", "--ifile"):
         csv_file = arg
@@ -67,12 +72,22 @@ for opt, arg in opts:
         weight_decay = float(arg)
     elif opt in ("-d", "--dropout"):
         dropout = float(arg)
+    elif opt in ("-T", "--test"):
+        test = int(arg)
+    elif opt in ("-p", "--plots"):
+        test = int(arg)
 
 if csv_file == '':
     print("Missing argument: -i csv_path\nes: training(RNN).py -i csv_file_path")
     sys.exit(2)
 
-converter = importer.CellCsvConverter()
+converter = importer.CellCsvConverter(useful_variables=["PercentualeAperturaValvolaMiscelatrice"
+                ,"PercentualeVelocitaVentilatori",
+                                "PompaGlicoleMarcia",
+                                "Raffreddamento",
+                                "TemperaturaCelle",
+                                "UmiditaRelativa",
+                                "VentilatoreMarcia"])
 train_dataset, validation_dataset, test_dataset = converter.Convert_csv_to_Dataset(csv_file, train_percentage=0.7,
                                                                                    normalize=False)
 
@@ -119,7 +134,8 @@ opt = Optimization(model=model, loss_fn=loss_fn, optimizer=optimizer)
 opt.train(train_loader=train_loader, val_loader=val_loader, batch_size=batch_size, n_epochs=n_epochs,
           train_features=input_dim,
           val_features=val_dim)
-opt.plot_losses()
+if plots == 1:
+    opt.plot_losses()
 
 model_loss = opt.last_validation_loss()
 
@@ -167,14 +183,15 @@ def plot_data(df:pd.DataFrame, metrics):
     plt.plot(df.value, label="Valori reali")
     plt.legend()
     plt.title("Grafico previsioni")
-    plt.text(0, 0, f"MAE: {metrics['mae']}, RMSE: {metrics['rmse']}, R2: {metrics['r2']}")
+    # plt.text(0, 0, f"MAE: {metrics['mae']}, RMSE: {metrics['rmse']}, R2: {metrics['r2']}")
     plt.show()
     plt.close()
 
 
 df = format_predictions(predictions, values)
 result_metrics = calculate_metrics(df)
-plot_data(df, result_metrics)
+if plots == 1:
+    plot_data(df, result_metrics)
 
 results = {
     "network": neural_network_kind,
@@ -183,9 +200,11 @@ results = {
     'R2': result_metrics['r2']
 }
 
-file = "./test_modelli_tmp.csv"
-with open(file, mode="a") as f:
-    writer = csv.DictWriter(f, data.keys())
-    if os.stat(file).st_size == 0:
-        writer.writeheader()
-    writer.writerow(data)
+print(results)
+if test == 1:
+    file = "./test_modelli_tmp.csv"
+    with open(file, mode="a") as f:
+        writer = csv.DictWriter(f, data.keys())
+        if os.stat(file).st_size == 0:
+            writer.writeheader()
+        writer.writerow(data)

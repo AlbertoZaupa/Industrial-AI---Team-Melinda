@@ -49,6 +49,7 @@ for (composite_csv in month_data) {
 }
 ```
 
+
 Convertire in csv
 ```{r}
 # converti in csv
@@ -71,8 +72,17 @@ for (cella in celle) {
     next
   } else {
     cella <- as.data.frame(cella)
+     # fixa le celle con problemi
+    cella$TemperaturaCelle <- gsub(pattern = ',',replacement = '.',fixed = TRUE,x=cella$TemperaturaCelle)
+    cella$TemperaturaCelle <- as.numeric(cella$TemperaturaCelle)
+    cella$TemperaturaMandataGlicole <- gsub(pattern = ',',replacement = '.',fixed = TRUE,x=cella$TemperaturaMandataGlicole)
+    cella$TemperaturaMandataGlicole <- as.numeric(cella$TemperaturaMandataGlicole)
+    cella$TemperaturaRitornoGlicole <- gsub(pattern = ',',replacement = '.',fixed = TRUE,x=cella$TemperaturaRitornoGlicole)
+    cella$TemperaturaRitornoGlicole <- as.numeric(cella$TemperaturaRitornoGlicole)
+
     # lento, ma write_csv non funziona correttamente
-    write.csv(x = cella, file = paste0(path, "/Cella_", i, ".csv"), append = app, col.names = !app, row.names = FALSE)
+    filename <- paste0(path, "/Cella_", i, ".csv")
+    write.table(x = cella, file = filename, append = app, col.names = TRUE, row.names = FALSE, sep=",")
     i <- i + 1
     if(!app){
       app <- TRUE

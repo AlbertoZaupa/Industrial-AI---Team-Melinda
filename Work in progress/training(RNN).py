@@ -1,5 +1,6 @@
 #!/usr/bin/python
 import getopt
+import os
 import sys
 
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
@@ -11,6 +12,8 @@ import dataframe_importer as importer
 from dataframe_importer import CellDataset
 from RNNs import *
 import matplotlib.pyplot as plt
+
+import csv
 
 argv = sys.argv[1:]
 csv_file = ''
@@ -48,7 +51,7 @@ for opt, arg in opts:
         sys.exit(0)
     elif opt in ("-i", "--ifile"):
         csv_file = arg
-    elif opt in ("-n", "--neural-network"):
+    elif opt in ("-n", "--network"):
         neural_network_kind = arg
     elif opt in ("-b", "--batch"):
         batch_size = int(arg)
@@ -118,6 +121,32 @@ opt.train(train_loader=train_loader, val_loader=val_loader, batch_size=batch_siz
           val_features=val_dim)
 opt.plot_losses()
 
+model_loss = opt.last_validation_loss()
+
+data = {
+    'final_validation_loss':model_loss,
+    'network':neural_network_kind,
+    'input_dim': input_dim,
+    'hidden_dim': hidden_dim,
+    'layer_dim': layer_dim,
+    'output_dim': output_dim,
+    'dropout_prob': dropout,
+    'learning_rate':learning_rate,
+    'epochs':n_epochs,
+    'weight_decay':weight_decay
+}
+
+cartella = "./cross_validation_results/cella_"+csv_file[-6:-4]+"/"
+file = cartella + neural_network_kind + '.csv'
+if not os.path.exists("./cross_validation_results/cella_"+csv_file[-6:-4]+"/"):
+    os.mkdir(cartella)
+with open(file, mode="a") as f:
+    writer = csv.DictWriter(f, data.keys())
+    if os.stat(file).st_size == 0:
+        writer.writeheader()
+    writer.writerow(data)
+# TODO: continue
+
 predictions, values = opt.evaluate(test_loader_one, batch_size=1, n_features=input_dim)
 
 
@@ -146,3 +175,17 @@ def plot_data(df:pd.DataFrame, metrics):
 df = format_predictions(predictions, values)
 result_metrics = calculate_metrics(df)
 plot_data(df, result_metrics)
+
+results = {
+    "network": neural_network_kind,
+    "Mean Absolute Error": result_metrics['mae'],
+    'Root Mean Square Error': result_metrics['rmse'],
+    'R2': result_metrics['r2']
+}
+
+file = "./test_modelli_tmp.csv"
+with open(file, mode="a") as f:
+    writer = csv.DictWriter(f, data.keys())
+    if os.stat(file).st_size == 0:
+        writer.writeheader()
+    writer.writerow(data)

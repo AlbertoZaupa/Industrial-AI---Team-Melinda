@@ -3,83 +3,80 @@ title: "Read challenge data (NB: Work in progress)"
 output: html_notebook
 ---
 
-Offline:
+# Caricare i dati(Offline)
 ```{r}
 library(readr)
-
+month_name <- "october"
+month_data <- list()
+pattern <- "*.csv$" # pattern: termina con .csv
 # polish data
-
-
-month_data <- read_delim(file = "../export_giugno_15min.csv", delim = ";")
+for (file in list.files(path = "./Dati originali", pattern = pattern, full.names = TRUE)) {
+  month_data <- append(month_data, list(read_delim(file = file, delim = ";")))
+}
 ```
+# Suddividere
 
-dividere i dati per lotto
 ```{r}
 library(tidyverse)
-
-TENTATIVI <- 100
-
-lotti <- list() # il lotto 1 sarà in posizione 1 ecc
-
-for (i in 1:TENTATIVI) {
-  # seleziona le colonne del lotto i
-
-  celle <- list() # lista per le celle
-  data <- month_data %>% select(Date, starts_with(paste("Melinda ipogeo_Lotto", i)))
-  # esempio data: tutte le variabili che iniziano con "Melinda ipogeo_Lotto 1"
-
-  # rinomina le colonne
-  names(data) <- gsub(pattern = ".*Lotto ._", replacement = "", x = names(data))
-
-  if (ncol(data) == 1) { # se sono finiti i lotti, quindi c'è solo la data
-    break # esci dal ciclo
-  } else {
-
-    # ora dividiamo anche le celle
-
-    # prima prendiamo le colonne comuni a tutte le celle, filtrando quindi i quadri specifici e le variabili delle celle
-    colonne_comuni <- data %>%
-      select(-starts_with("Cella")) %>%
-      select(-starts_with("Quadro Celle"))
-
-    # non sapendo a priori il numero delle celle, e dato che hanno i nomi in progressivo da un lotto all'altro, si va a tentativi
-    for (j in 1:TENTATIVI) {
-
-      # selezioniamo i dati della cella corrispondente
-      cella <- data %>% select(starts_with(paste0("Cella ", j, "_")))
-
-      if (ncol(cella) == 0) { # nessun match
-        next # continua
-      } else {
-        # selezioniamo i quadri della cella corrispondente
-        quadri_celle <- data %>% select(matches(paste0("Quadro Celle ", j, "-.*")), matches(paste0("Quadro Celle ?-", j, ".*")))
-        # uniamo i dati della cella e la inseriamo nella lista delle celle
-        celle <- append(celle, list(cbind(colonne_comuni, quadri_celle, cella)))
-      }
+# NB: questa versione dello script divide direttamente per celle, senza tenere conto dell'ipogeo
+# è stato fatto per velocizzare, se necessario verrà caricato l'altro script
+TENTATIVI <- 100 # non sappiamo esattamente quante celle ci sono
+celle <- unlist(list(rep(list(0),100)), recursive = FALSE)
+for (composite_csv in month_data) {
+  composite_csv <- as_tibble(composite_csv)
+  # rimuove l'ultima colonna perchè sono solo NA
+  composite_csv <- composite_csv[,-ncol(composite_csv)]
+  # le colonne Tuenetto, tassullo, denno e cles sono piene di NA pure loro
+  composite_csv <- composite_csv[,-((ncol(composite_csv) - 4):ncol(composite_csv))]
+  # rinomina le colonne (toglie ipogeo)
+  pattern <- "Ipogeo.*_C"
+  names(composite_csv) <- gsub(pattern = "Ipogeo.*_C", replacement = "C", x = names(composite_csv))
+  for (i in 1:TENTATIVI) {
+    # seleziona le colonne della cella i
+    # lista per le celle
+    pattern <- paste0("Cella", i, "[A-Z]")
+    data <- composite_csv %>% select(Date, matches(pattern)) # dataframe con solo le colonne della cella
+    if (ncol(data) == 1) { # se sono finite le celle, quindi c'è solo la data
+      next # le celle non sono in ordine
+    } else {
+     # rimuove "Cellan" dai nomi
+    pattern <- paste0("Cella", i)
+    names(data) <- gsub(pattern = pattern, replacement = "", x = names(data))
+    celle[i] <- list(data)
+    # esempio data: tutte le variabili che iniziano con "Ipogeo2"
     }
-    lotti <- append(lotti, list(celle)) # aggiungi l'insieme di celle alla lista dei lotti
   }
 }
-
 ```
-Se ha avuto successo, meglio liberare i dati di prima che non servono piu'
-```{r}
-rm(celle, cella, colonne_comuni, data, i, j, month_data, quadri_celle)
-```
-Se vogliamo un csv per ogni cella, cosi' da semplificare il training
-```{r}
-library(readr)
-# percorso base dove tenere i csv
-path <- "./CSV/"
-i <- 1 # importante per il numero di cella. Si può ricavare anche dai dati, ma così è più veloce. Possiamo farlo perchè le celle vanno in numero progressivo anche cambiando lotto
 
-# spacchetta le celle a partire dalla struttura dei lotti
-celle <- unlist(lotti, recursive = FALSE)
+Convertire in csv
+```{r}
+# converti in csv
+rm(data, file, month_data, pattern)
+#
+path <- paste0("CSV/", month_name)
+if(!dir.exists(path))
+{
+  dir.create(path = path)
+} else {
+  files <- list.files(path, full.names = TRUE)
+  unlink(files)
+}
+i <- 1
+app <- FALSE
 
 for (cella in celle) {
-  write_csv(x = cella, file = paste0(path, "Cella_", i,".csv")) # TODO: da modificare
-  i <- i + 1
+  if(typeof(cella) == "double"){
+    i <- i + 1
+    next
+  } else {
+    cella <- as.data.frame(cella)
+    # lento, ma write_csv non funziona correttamente
+    write.csv(x = cella, file = paste0(path, "/Cella_", i, ".csv"), append = app, col.names = !app, row.names = FALSE)
+    i <- i + 1
+    if(!app){
+      app <- TRUE
+    }
+  }
 }
-# rimuove i file inutili
-rm(cella, i, path)
 ```

@@ -81,13 +81,15 @@ if csv_file == '':
     print("Missing argument: -i csv_path\nes: training(RNN).py -i csv_file_path")
     sys.exit(2)
 
-converter = importer.CellCsvConverter(useful_variables=["PercentualeAperturaValvolaMiscelatrice"
-                ,"PercentualeVelocitaVentilatori",
-                                "PompaGlicoleMarcia",
-                                "Raffreddamento",
-                                "TemperaturaCelle",
-                                "UmiditaRelativa",
-                                "VentilatoreMarcia"])
+converter = importer.CellCsvConverter(useful_variables=["PercentualeAperturaValvolaMiscelatrice",
+                                                        "PercentualeVelocitaVentilatori",
+                                                        "PompaGlicoleMarcia",
+                                                        "Raffreddamento",
+                                                        "TemperaturaCelle",
+                                                        "TemperaturaMandataGlicole",
+                                                        "TemperaturaRitornoGlicole",
+                                                        "UmiditaRelativa",
+                                                        "VentilatoreMarcia"])
 train_dataset, validation_dataset, test_dataset = converter.Convert_csv_to_Dataset(csv_file, train_percentage=0.7,
                                                                                    normalize=False)
 

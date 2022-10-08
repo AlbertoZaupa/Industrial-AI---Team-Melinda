@@ -202,7 +202,7 @@ results = {
 
 print(results)
 if test == 1:
-    file = "./test_modelli_tmp.csv"
+    file = "./test_modelli.csv"
     with open(file, mode="a") as f:
         writer = csv.DictWriter(f, data.keys())
         if os.stat(file).st_size == 0:

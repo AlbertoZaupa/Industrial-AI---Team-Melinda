@@ -1,0 +1,64 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+Aggiungiamo le predizioni passate
+```{r}
+lag <- 60
+data_dir <- "CSV/october"
+write_dir <- "Codice/Metodi Statistici/lagged_datasets/"
+
+REMOVE_NA <- TRUE
+
+preprocess <- function(cella, remove = TRUE) {
+  if (remove) {
+   # cella$PercentualeVelocitaVentilatori[cella$PercentualeVelocitaVentilatori > 100 |
+   #                                        cella$PercentualeVelocitaVentilatori < 0] <- NA
+
+    cella$PercentualeAperturaValvolaMiscelatrice[cella$PercentualeAperturaValvolaMiscelatrice > 100 |
+                                                   cella$PercentualeAperturaValvolaMiscelatrice < 0] <- NA
+
+   # cella$PompaGlicoleMarcia[cella$PompaGlicoleMarcia > 1 |
+   #                            cella$PompaGlicoleMarcia < 0] <- NA
+   # cella$Raffreddamento[cella$Raffreddamento > 1 |
+   #                        cella$Raffreddamento < 0] <- NA
+   # cella$VentilatoreMarcia[cella$VentilatoreMarcia > 1 |
+   #                           cella$VentilatoreMarcia < 0] <- NA
+
+    cella <- drop_na(cella)
+
+
+  }
+}
+
+
+library(readr)
+library(data.table)
+library(tidyverse)
+files <- list.files(data_dir)
+
+for (file in files) {
+  df <- read_csv(paste0(data_dir, '/', file))
+  df <- data.table(df)
+
+  for (i in 1:lag) {
+    df[, paste0("TemperaturaCelleP", i) := shift(df$TemperaturaCelle, i, type = "lag")]
+  }
+  df <- as_data_frame(df)
+  df <- preprocess(df)
+  if (REMOVE_NA) {
+    df <- drop_na(df)
+  }
+  write_csv(x = df, file = paste0(write_dir, file))
+}
+```
+
+Type any R code in the chunk, for example:
+```{r}
+mycars <- within(mtcars, { cyl <- ordered(cyl) })
+mycars
+```
+
+Now, click the **Run** button on the chunk toolbar to [execute](https://www.jetbrains.com/help/pycharm/r-markdown.html#run-r-code) the chunk code. The result should be placed under the chunk.
+Click the **Knit and Open Document** to build and preview an output.

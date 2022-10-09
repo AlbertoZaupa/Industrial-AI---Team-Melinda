@@ -7,7 +7,7 @@ Aggiungiamo le predizioni passate
 ```{r}
 lag <- 60
 data_dir <- "CSV/october"
-write_dir <- "Codice/Metodi Statistici/lagged_datasets/"
+write_dir <- "Codice/Metodi_Statistici/lagged_datasets/"
 
 REMOVE_NA <- TRUE
 

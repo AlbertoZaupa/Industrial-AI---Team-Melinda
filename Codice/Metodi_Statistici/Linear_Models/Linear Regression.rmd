@@ -188,7 +188,7 @@ ylab("Temperatura")
 ```
 
 ```{r}
-saveRDS(formula, file = "Codice/Metodi Statistici/saved models/Linear Regression/formula_ridotta_lr.rds")
+saveRDS(formula, file = "Codice/Metodi Statistici/saved parameters/Linear Regression/formula_ridotta_lr.rds")
 ```
 
 
@@ -217,7 +217,7 @@ errors <- rbind(errors,
 ```
 
 ```{r}
-saveRDS(bestlam, file = "Codice/Metodi Statistici/saved models/Linear Regression/best_lambda_ridge.rds")
+saveRDS(bestlam, file = "Codice/Metodi Statistici/saved parameters/Linear Regression/best_lambda_ridge.rds")
 ```
 ```{r}
 library(ggplot2)
@@ -259,7 +259,7 @@ errors <- rbind(errors,
 
 ```{r}
 # lasso
-saveRDS(bestlam, file = "Codice/Metodi Statistici/saved models/Linear Regression/best_lambda_lasso.rds")
+saveRDS(bestlam, file = "Codice/Metodi Statistici/saved parameters/Linear Regression/best_lambda_lasso.rds")
 ```
 
 
@@ -277,5 +277,5 @@ ylab("Temperatura")
 ```
 
 ```{r}
-saveRDS(object = errors[,-1], file = "Codice/Metodi Statistici/saved models/metriche_errori/Regressioni_lineari.rds")
+saveRDS(object = errors[,-1], file = "Codice/Metodi Statistici/saved parameters/metriche_errori/Regressioni_lineari.rds")
 ```

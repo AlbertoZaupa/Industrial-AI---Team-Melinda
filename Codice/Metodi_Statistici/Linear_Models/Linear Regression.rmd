@@ -6,7 +6,8 @@ output: html_notebook
 ```{r}
 library(readr)
 
-cell_file <- "Codice/Metodi Statistici/lagged_datasets/Cella_15.csv"
+cell_file <- "Codice/Metodi_Statistici/lagged_datasets/Cella_18.csv"
+cell_number <- 18
 
 #leggiamo il dataset della cella
 cella <- read_csv(cell_file)
@@ -33,6 +34,8 @@ summary(cella) # assicuriamoci che vada tutto# bene
 ```
 
 ```{r}
+library(Metrics)
+
 # suddivisione
 DATASET_SIZE <- nrow(cella)
 
@@ -67,7 +70,7 @@ createDFs <- function(df, partitions, partition_number = 1) {
   # partizione indicata
   valid <- df[unlist(partitions[partition_number]),]
   # tutte le partizioni tranne quella indicata
-  tr <- dbr[-unlist(partitions[partition_number]),]
+  tr <- df[-unlist(partitions[partition_number]),]
   return(list(training = tr, validation = valid))
 }
 
@@ -188,7 +191,7 @@ ylab("Temperatura")
 ```
 
 ```{r}
-saveRDS(formula, file = "Codice/Metodi Statistici/saved parameters/Linear Regression/formula_ridotta_lr.rds")
+saveRDS(formula, file = paste0("Codice/Metodi_Statistici/saved_parameters/Linear_Regression/formula_ridotta_lr_cella_",cell_number,".rds"))
 ```
 
 
@@ -209,7 +212,7 @@ predictions <- predict(model, s=bestlam, newx=x_test)
 
 predictions <- unlist(as.data.frame(predictions))
 errors <- rbind(errors,
-                compute_metrics(name = paste0("Ridge Linear Regression (Lambda = ", bestlam,")"),
+                compute_metrics(name = paste0("Ridge Linear_Regression (Lambda = ", bestlam,")"),
                                 preds = predictions,
                                 test = y_test
                 )
@@ -217,7 +220,7 @@ errors <- rbind(errors,
 ```
 
 ```{r}
-saveRDS(bestlam, file = "Codice/Metodi Statistici/saved parameters/Linear Regression/best_lambda_ridge.rds")
+saveRDS(bestlam, file = "Codice/Metodi_Statistici/saved_parameters/Linear_Regression/best_lambda_ridge.rds")
 ```
 ```{r}
 library(ggplot2)
@@ -250,7 +253,7 @@ predictions <- predict(model, s=bestlam, newx=x_test)
 
 predictions <- unlist(as.data.frame(predictions))
 errors <- rbind(errors,
-                compute_metrics(name = paste0("Lasso Linear Regression (Lambda = ", bestlam,")"),
+                compute_metrics(name = paste0("Lasso Linear_Regression (Lambda = ", bestlam,")"),
                                 preds = predictions,
                                 test = y_test
                 )
@@ -259,7 +262,7 @@ errors <- rbind(errors,
 
 ```{r}
 # lasso
-saveRDS(bestlam, file = "Codice/Metodi Statistici/saved parameters/Linear Regression/best_lambda_lasso.rds")
+saveRDS(bestlam, file = paste0("Codice/Metodi_Statistici/saved_parameters/Linear_Regression/best_lambda_lasso_Cella_",cell_number,".rds"))
 ```
 
 
@@ -277,5 +280,5 @@ ylab("Temperatura")
 ```
 
 ```{r}
-saveRDS(object = errors[,-1], file = "Codice/Metodi Statistici/saved parameters/metriche_errori/Regressioni_lineari.rds")
+saveRDS(object = errors[,-1], file = paste0("Codice/Metodi_Statistici/saved_parameters/metriche_errori/Regressioni_lineari_cella_",cell_number,".rds"))
 ```

@@ -1,0 +1,171 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+library(readr)
+
+cell_file <- "Codice/Metodi_Statistici/lagged_datasets/Cella_15.csv"
+cell_number <- 15
+
+#leggiamo il dataset della cella
+cella <- read_csv(cell_file)
+cella$Date <- NULL  # rimuove la prima colonna dato che ha l'orario
+spec(cella) # per vedere se ci sono problemi
+```
+
+```{r}
+# fix colonne
+cella$PompaGlicoleMarcia <- as.factor(cella$PompaGlicoleMarcia)
+cella$Raffreddamento <- as.factor(cella$Raffreddamento)
+cella$VentilatoreMarcia <- as.factor(cella$VentilatoreMarcia)
+
+cella$TemperaturaMandataGlicoleNominale <- NULL
+
+```
+
+Type any R code in the chunk, for example:
+```{r}
+library(tidyverse)
+
+cella <- as_tibble(cella)
+summary(cella) # assicuriamoci che vada tutto# bene
+```
+
+```{r}
+library(Metrics)
+
+# suddivisione
+DATASET_SIZE <- nrow(cella)
+
+TEST_SIZE <- 0.2
+# TUNING_SIZE <- 0.8
+
+K_FOLDS <- 10
+MAX_K <- 100
+
+
+id_test <- as.integer(DATASET_SIZE * (1 - TEST_SIZE)):DATASET_SIZE
+
+cella_test <- cella[id_test,]
+cella <- cella[-id_test,]
+
+# per i metodi che richiedono x e y
+x_train <- cella %>% select(-TemperaturaCelle)
+x_train <- data.matrix(x_train)
+y_train <- cella %>% select(TemperaturaCelle)
+y_train <- unlist(y_train)
+
+x_test <- cella_test %>% select(-TemperaturaCelle)
+x_test <- data.matrix(x_test)
+y_test <- cella_test %>% select(TemperaturaCelle)
+y_test <- unlist(y_test)
+
+#                   shuffle
+partitions <- split(sample(seq_len(nrow(cella))), cut_number(seq_len(nrow(cella)), K_FOLDS, labels = FALSE))
+
+
+
+createDFs <- function(df, partitions, partition_number = 1) {
+  # partizione indicata
+  valid <- df[unlist(partitions[partition_number]),]
+  # tutte le partizioni tranne quella indicata
+  tr <- df[-unlist(partitions[partition_number]),]
+  return(list(training = tr, validation = valid))
+}
+
+compute_metrics <- function(name = "dummy", preds = c(2, 1, 3, 8, 8, 2, 3, 6), test = c(7, 3, 4, 5, 6, 8, 5, 6)) {
+  error <- data.frame(name = name,
+                      mse = mse(actual = test, predicted = preds), # mean square error
+                      rmse = rmse(actual = test, predicted = preds), # root mean square error
+                      rmsle = rmsle(actual = test, predicted = preds), # root mean square log error
+                      rrse = rrse(actual = test, predicted = preds), # root relative square error
+                      rse = rse(actual = test, predicted = preds), # relative square error
+                      bias = bias(actual = test, predicted = preds), # bias del modello
+                      pbias = percent_bias(actual = test, predicted = preds), # percent bias
+                      mae = mae(actual = test, predicted = preds), # Mean Absolute Error
+                      rae = rae(actual = test, predicted = preds), # relative absolute error
+                      mape = mape(actual = test, predicted = preds), # Mean Absolute Percentage Error
+                      mdae = mdae(actual = test, predicted = preds), # Median Absolute Different Error
+                      msle = msle(actual = test, predicted = preds), # Mean Squared Log Error
+                      smape = smape(actual = test, predicted = preds), #symmetric mean absolute percentage error
+                      sse = sse(actual = test, predicted = preds), # sum of the squared differences between two numeric vectors
+                      r2 = cor(test, preds)^2
+  )
+
+  return(error)
+}
+
+library(stringr)
+create_formula <- function(y = "y", useful_factors = ".") {
+  result <- paste(y, "~ ")
+  for (factor in useful_factors) {
+    result <- paste(result, factor, "+")
+  }
+
+  result <- substring(result, first = 1, str_length(result) - 1)
+  return(result)
+}
+
+errors <- compute_metrics()
+
+DISTANCE <- 2 # distanza di Minkowski
+KERNEL <- "optimal" # opzioni: "rectangular", "triangular", "epanechnikov", "biweight", "triweight" , "cos", "inv", "gaussian" and "optimal"
+
+```
+
+# KNN
+
+## Cross Validation
+```{r}
+library(kknn) # weighted knn
+
+best_ks <- NULL
+
+  for(i in 1:K_FOLDS){
+    df <- createDFs(cella, partitions = partitions, partition_number = i)
+    result <- train.kknn(TemperaturaCelle ~ ., data = df$training, kmax = MAX_K,
+                         distance = DISTANCE, kernel = KERNEL
+    )
+    plot(result)
+    best_k <- which.min(result$MEAN.SQU)
+    best_ks <- c(best_ks, best_k)
+
+  }
+
+
+
+```
+```{r}
+print(best_ks)
+
+best_k <- median(best_ks)
+```
+
+```{r}
+# test
+model <- kknn(formula = TemperaturaCelle ~ ., train = cella, test = cella_test, k=best_k,
+              distance = DISTANCE, kernel = KERNEL)
+
+errors <- rbind(errors, compute_metrics(name=paste0("KNN ( k=",best_k,", Minkowski Distance=",
+                                                      DISTANCE,", kernel=", KERNEL,")"),
+                                        preds = model$fitted.values, test = cella_test$TemperaturaCelle ))
+```
+```{r}
+library(ggplot2)
+
+x <- seq_along(model$fitted.values)
+df <- data.frame(x,y1=model$fitted.values,y2=cella_test$TemperaturaCelle)
+
+ggplot(df, aes(x)) +                    # basic graphical object
+  geom_line(aes(y=y1), colour="black") +  # first layer
+  geom_line(aes(y=y2), colour="green") + # second layer
+        labs(title = "Temperatura cella", subtitle = "Predetta vs attuale") + xlab("Tempo") +
+ylab("Temperatura")
+```
+
+```{r}
+saveRDS(best_k, file=paste0("Codice/Metodi_Statistici/saved_parameters/KNN/best_k_cella_",cell_number,".rds"))
+saveRDS(errors[-1,], file = paste0("Codice/Metodi_Statistici/saved_parameters/metriche_errori/KNN_cella_", cell_number,".rds"))
+```

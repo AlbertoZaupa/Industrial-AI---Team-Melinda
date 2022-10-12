@@ -1,7 +1,7 @@
 # specifici per il nostro progetto
 *.rds
 *.bk
-*/models/*
+*/models/
 */log.txt
 
 ### CVS template

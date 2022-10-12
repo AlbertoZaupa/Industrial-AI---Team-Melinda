@@ -43,8 +43,6 @@ TEST_SIZE <- 0.2
 # TUNING_SIZE <- 0.8
 
 K_FOLDS <- 10
-MAX_TREES <- 100
-
 
 id_test <- as.integer(DATASET_SIZE * (1 - TEST_SIZE)):DATASET_SIZE
 
@@ -102,21 +100,26 @@ errors <- compute_metrics()
 
 ```
 
-# Simple Tree
+# Maximal Margin Classifier
 ```{r}
-library(tree)
-model <- tree(formula = TemperaturaCelle ~ ., data = cella)
-summary(model)
-plot(model)
-text(model, pretty = 0)
-title(main = "Tree model for cell Temperature", sub = "Unpruned regression tree")
+library(e1071)
+# no need for tuning
+
+# the budget cannot be set to 0, so the cost will be set to a very high
+model_mmc <- svm(TemperaturaCelle ~ ., data = cella, kernel = "linear", cost = 1e100,
+                 scale = FALSE, type = "eps-regression")
+summary(model_mmc)
 ```
 
 ```{r}
-predictions <- predict(model, cella_test)
+predictions <- predict(model_mmc, cella_test)
 errors <- rbind(compute_metrics(name = "Simple Tree", preds = predictions, test = cella_test$TemperaturaCelle))
 ```
 
+
+```{r}
+
+```
 
 ```{r}
 library(ggplot2)
@@ -228,7 +231,7 @@ varImpPlot(model_rf)
 ```
 
 ```{r}
-predictions <- predict(model_rf, cella_test)
+predictions <- predict(model_bagging, cella_test)
 errors <- rbind(errors, compute_metrics(
   name = paste0("Random Forest (N_trees: ", MAX_TREES),
   preds = predictions,

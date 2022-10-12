@@ -2,6 +2,7 @@
 *.rds
 *.bk
 */models
+*/log.txt
 
 ### CVS template
 CVS/*

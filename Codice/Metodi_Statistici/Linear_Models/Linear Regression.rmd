@@ -6,8 +6,8 @@ output: html_notebook
 ```{r}
 library(readr)
 
-cell_file <- "Codice/Metodi_Statistici/lagged_datasets/Cella_18.csv"
-cell_number <- 18
+cell_file <- "Codice/Metodi_Statistici/lagged_datasets/Cella_23.csv"
+cell_number <- 23
 
 #leggiamo il dataset della cella
 cella <- read_csv(cell_file)

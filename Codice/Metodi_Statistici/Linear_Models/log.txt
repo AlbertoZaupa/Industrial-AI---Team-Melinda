@@ -1,10 +1,10 @@
 
-Input file: /home/dmmp/Documents/GitHub/Industrial-AI---Team-Melinda/Codice/Metodi_Statistici/lagged_datasets/Cella_23.csv
-Cella: 23
+Input file: /home/dmmp/Documents/GitHub/Industrial-AI---Team-Melinda/Codice/Metodi_Statistici/lagged_datasets/Cella_15.csv
+Cella: 15
 Folds per k-fold CV: 
 Directory per l'output: ./
 P-value massimo: 0.01
 Staring parameter selection
-New formula: TemperaturaCelle ~  PercentualeAperturaValvolaMiscelatrice + PercentualeVelocitaVentilatori + TemperaturaMandataGlicole + TemperaturaRitornoGlicole + TemperaturaCelleP1 + TemperaturaCelleP2 + TemperaturaCelleP3 + TemperaturaCelleP10 + TemperaturaCelleP11 + TemperaturaCelleP21 + TemperaturaCelleP22 + TemperaturaCelleP53 + TemperaturaCelleP57 
-New formula: TemperaturaCelle ~  PercentualeAperturaValvolaMiscelatrice + PercentualeVelocitaVentilatori + TemperaturaMandataGlicole + TemperaturaRitornoGlicole + TemperaturaCelleP1 + TemperaturaCelleP2 + TemperaturaCelleP3 + TemperaturaCelleP10 + TemperaturaCelleP21 + TemperaturaCelleP22 
-mse: 0.00162839446267265
+New formula: TemperaturaCelle ~  PercentualeAperturaValvolaMiscelatrice + PercentualeVelocitaVentilatori + PompaGlicoleMarcia + TemperaturaMandataGlicoleNominale + TemperaturaCelleP1 + TemperaturaCelleP2 + TemperaturaCelleP5 + TemperaturaCelleP8 + TemperaturaCelleP15 + TemperaturaCelleP17 + TemperaturaCelleP30 + TemperaturaCelleP35 + TemperaturaCelleP56 + TemperaturaCelleP57 
+New formula: TemperaturaCelle ~  PercentualeAperturaValvolaMiscelatrice + PercentualeVelocitaVentilatori + PompaGlicoleMarcia + TemperaturaMandataGlicoleNominale + TemperaturaCelleP1 + TemperaturaCelleP2 + TemperaturaCelleP5 + TemperaturaCelleP8 + TemperaturaCelleP15 + TemperaturaCelleP17 + TemperaturaCelleP35 + TemperaturaCelleP56 
+mse: 0.00137414533744179

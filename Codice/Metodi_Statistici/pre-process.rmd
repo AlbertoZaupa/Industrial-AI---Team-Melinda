@@ -5,6 +5,7 @@ output: html_notebook
 
 Aggiungiamo le predizioni passate
 ```{r}
+lagged <- FALSE
 lag <- 60
 data_dir <- "CSV/october"
 write_dir <- "Codice/Metodi_Statistici/lagged_datasets/"
@@ -38,27 +39,31 @@ library(data.table)
 library(tidyverse)
 files <- list.files(data_dir)
 
+
 for (file in files) {
   df <- read_csv(paste0(data_dir, '/', file))
   df <- data.table(df)
 
-  for (i in 1:lag) {
+  if(lagged){
+    for (i in 1:lag) {
     df[, paste0("TemperaturaCelleP", i) := shift(df$TemperaturaCelle, i, type = "lag")]
   }
+  }
+
   df <- as_data_frame(df)
   df <- preprocess(df)
   if (REMOVE_NA) {
     df <- drop_na(df)
   }
-  write_csv(x = df, file = paste0(write_dir, file))
+  if(lagged){
+    write_csv(x = df, file = paste0(write_dir, file))
+  } else {
+    write_csv(x = df, file = paste0(data_dir,"/", file))
+  }
+
 }
+
+
+
 ```
 
-Type any R code in the chunk, for example:
-```{r}
-mycars <- within(mtcars, { cyl <- ordered(cyl) })
-mycars
-```
-
-Now, click the **Run** button on the chunk toolbar to [execute](https://www.jetbrains.com/help/pycharm/r-markdown.html#run-r-code) the chunk code. The result should be placed under the chunk.
-Click the **Knit and Open Document** to build and preview an output.

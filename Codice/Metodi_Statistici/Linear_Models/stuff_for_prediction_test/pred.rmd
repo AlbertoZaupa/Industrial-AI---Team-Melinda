@@ -1,0 +1,92 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+numero_cella <- 18
+minuti_nel_futuro <- 1000
+starting_minute <- 500
+
+csv <- read.csv(paste0("CSV/october/Cella_",numero_cella,".csv"))
+csvp <- csv[starting_minute:(starting_minute+59),]
+write_csv(csvp,"Codice/Metodi_Statistici/Linear_Models/stuff_for_prediction_test/dati_passati.csv")
+csvf <- csv[(starting_minute+60):(starting_minute+minuti_nel_futuro+60),]
+write_csv(csvf,"Codice/Metodi_Statistici/Linear_Models/stuff_for_prediction_test/dati_futuri.csv")
+```
+
+
+```{r}
+library(readr)
+past <- read_csv("Codice/Metodi_Statistici/Linear_Models/stuff_for_prediction_test/dati_passati.csv")
+fut <- read_csv("Codice/Metodi_Statistici/Linear_Models/stuff_for_prediction_test/dati_futuri.csv")
+```
+
+```{r}
+past$Date <- NULL
+fut$Date <- NULL
+```
+
+
+```{r}
+library(tidyverse)
+temperature_test <- unlist(fut$TemperaturaCelle)
+temperature_passate <- unlist(past$TemperaturaCelle)
+
+dati_forniti <- fut %>% select(-TemperaturaCelle)
+# modello <- readRDS(paste0("Codice/Metodi_Statistici/Linear_Models/modello_cella_",numero_cella,".rds"))
+modello <- readRDS(paste0("Codice/Metodi_Statistici/Linear_Models/test_modello_semplice_cella_",numero_cella,".rds"))
+```
+
+```{r}
+library(stringr)
+temperature_necessarie <- names(modello$coefficients) %>% str_subset(pattern = "TemperaturaCelleP.*")
+i_pr <- as.numeric(gsub(pattern = "TemperaturaCelleP", replacement = "", x=temperature_necessarie))
+
+
+```
+```{r}
+
+
+
+for(minute in 1:minuti_nel_futuro){
+
+  current_record <- dati_forniti[minute,]
+  # creazione riga
+  for(i in seq_along(i_pr)){
+    current_record[temperature_necessarie[i]] <- temperature_passate[(length(temperature_passate) - i_pr[i])]
+  }
+  temperatura_predetta <- predict(modello, current_record)
+  # temperature_predette <- c(temperature_predette, temperatura_predetta)
+  temperature_passate <- c(temperature_passate, temperatura_predetta)
+
+}
+```
+```{r}
+library(Metrics)
+
+temperature_predette <- temperature_passate[(length(temperature_passate) - minuti_nel_futuro):length(temperature_passate)]
+error <- mse(actual = temperature_test,
+             predicted = temperature_predette)
+errore_ultima_temperatura <- abs(temperature_test[length(temperature_test)] -
+                                 temperature_predette[length(temperature_predette)])
+print(paste0("MSE: ", error))
+print(paste0("Errore assoluto ultima temperatura: ", errore_ultima_temperatura))
+```
+```{r}
+library(ggplot2)
+
+x <- seq_along(temperature_test)
+df <- data.frame(x,y1=temperature_predette,y2=temperature_test)
+
+ggplot(df, aes(x)) +                    # basic graphical object
+  geom_line(aes(y=y1), colour="orange") +  # first layer
+  geom_line(aes(y=y2), colour="green") + # second layer
+        labs(title = "Temperatura cella", subtitle = "Predetta vs attuale",
+             caption = paste0("Minuti: ", minuti_nel_futuro,
+                              ",     MSE: ", error,"     Errore ultimo minuto: ",
+                              errore_ultima_temperatura)) +
+        xlab("Tempo") +
+ylab("Temperatura") +
+        ylim(0,3.5)
+```

@@ -6,8 +6,8 @@ output: html_notebook
 ```{r}
 library(readr)
 
-cell_file <- "Codice/Metodi_Statistici/lagged_datasets/Cella_23.csv"
-cell_number <- 23
+cell_file <- "Codice/Metodi_Statistici/lagged_datasets/Cella_15.csv"
+cell_number <- 15
 
 #leggiamo il dataset della cella
 cella <- read_csv(cell_file)
@@ -21,8 +21,10 @@ spec(cella) # per vedere se ci sono problemi
 # cella$Raffreddamento <- as.factor(cella$Raffreddamento)
 # cella$VentilatoreMarcia <- as.factor(cella$VentilatoreMarcia)
 
-cella$TemperaturaMandataGlicoleNominale <- NULL
-
+# cella$TemperaturaMandataGlicoleNominale <- NULL
+cella$TemperaturaMandataGlicole <- NULL
+cella$TemperaturaRitornoGlicole <- NULL
+cella$VentilatoreMarcia <- NULL
 ```
 
 Type any R code in the chunk, for example:

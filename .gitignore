@@ -4,12 +4,14 @@
 */models/
 */log.txt
 
+
 ### CVS template
 CVS/*
 **/CVS/*
 .cvsignore
 */.cvsignore
 *.csv
+!CSV/*
 
 ### C++ template
 # Prerequisites

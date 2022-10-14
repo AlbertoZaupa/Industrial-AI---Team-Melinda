@@ -78,7 +78,7 @@ library(readr)
 cella <- read_csv(CELL_FILE, show_col_types = VERBOSE)
 cella$Date <- NULL  # rimuove la prima colonna dato che ha l'orario
 # cella$TemperaturaMandataGlicoleNominale <- NULL
-cella$TemperaturaRitornoGlicoleNominale <- NULL
+cella$TemperaturaRitornoGlicole <- NULL
 cella$TemperaturaMandataGlicole <- NULL
 cella$VentilatoreMarcia <- NULL
 

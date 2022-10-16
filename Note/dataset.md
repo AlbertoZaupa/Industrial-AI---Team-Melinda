@@ -12,7 +12,7 @@ Basandosi sui dati condivisi, la struttura ***ipogeo*** è composta da 3 lotti, 
 - `TemperaturaRoccia1`, `TemperaturaRoccia2`, `TemperaturaRoccia3`, `TemperaturaRoccia4`: temperature misurate al decimo di grado;
 - `UmiditaRelativa`: valore percentuale (range $[0,100]$);
 - `Preventilazione`, `Postventilazione`: valore binario acceso (1) o spento (0);
-- `PompaGlicoleMarcia`: valore binario acceso (1) o spento (0);
+- `PompaGlicoleMarcia`: valore binario acceso (1) o spento (0). Di fatto la pompa si accende solamente quando la valvola è aperta, altrimenti è spenta;
 - `PercentualeVelocitaVentilatori`: assume solo due valori: acceso (100) o spento (0).
 
 Altre variabili non documentate: `InterventoTermostatoAntigelo`, `PompaAvviamentiGiornalieri`, `Raffreddamento` (sembra coincidente con `PompaGlicoleMarcia`), `SbrinamentoAcqua`, `SbrinamentoAcquaAvviamenti`, `SbrinamentoAria`, `SelettoreFrigoManuale`, `SgocciolamentoDopoSbrinamentoAcqua`, `Umidificazione`, `UmidificazioneAvviamenti`, `ValvolaSbrinamentoAcquaAperta`, `VentilatoreAvviamentiGiornalieri`, `VentilatoreMarcia` (sembra coincidente con `PercentualeVelocitaVentilatori`), `VentilazioneAntistratificazionePortaAperta`, `VentilazioneForzata`.

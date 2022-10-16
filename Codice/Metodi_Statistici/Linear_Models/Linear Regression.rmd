@@ -7,7 +7,8 @@ output: html_notebook
 library(readr)
 
 cell_file <- "Codice/Metodi_Statistici/lagged_datasets/Cella_15.csv"
-cell_number <- 15
+cell_number <- 18
+target_y <- readRDS("y.rds")
 
 #leggiamo il dataset della cella
 cella <- read_csv(cell_file)
@@ -16,21 +17,26 @@ spec(cella) # per vedere se ci sono problemi
 ```
 
 ```{r}
+library(tidyverse)
 # fix colonne
 # cella$PompaGlicoleMarcia <- as.factor(cella$PompaGlicoleMarcia)
 # cella$Raffreddamento <- as.factor(cella$Raffreddamento)
 # cella$VentilatoreMarcia <- as.factor(cella$VentilatoreMarcia)
 
-# cella$TemperaturaMandataGlicoleNominale <- NULL
-cella$TemperaturaMandataGlicole <- NULL
-cella$TemperaturaRitornoGlicole <- NULL
-cella$VentilatoreMarcia <- NULL
+# separa dataset
+targets <- cella %>% select(starts_with(paste0(target_y,"F")))
+cella <- cella %>% select(-starts_with(paste0(target_y,"F")))
+
+
+cella$TemperaturaMandataGlicoleNominale <- NULL
+# cella$TemperaturaMandataGlicole
+cella$PompaGlicoleMarcia <- NULL
+
+
+# cella$VentilatoreMarcia <- NULL
 ```
 
-Type any R code in the chunk, for example:
 ```{r}
-library(tidyverse)
-
 cella <- as_tibble(cella)
 summary(cella) # assicuriamoci che vada tutto# bene
 ```
@@ -50,18 +56,9 @@ K_FOLDS <- 10
 id_test <- as.integer(DATASET_SIZE * (1 - TEST_SIZE)):DATASET_SIZE
 
 cella_test <- cella[id_test,]
-cella <- cella[-id_test,]
+cella_train <- cella[-id_test,]
 
-# per i metodi che richiedono x e y
-x_train <- cella %>% select(-TemperaturaCelle)
-x_train <- data.matrix(x_train)
-y_train <- cella %>% select(TemperaturaCelle)
-y_train <- unlist(y_train)
 
-x_test <- cella_test %>% select(-TemperaturaCelle)
-x_test <- data.matrix(x_test)
-y_test <- cella_test %>% select(TemperaturaCelle)
-y_test <- unlist(y_test)
 
 #                   shuffle
 partitions <- split(sample(seq_len(nrow(cella))), cut_number(seq_len(nrow(cella)), K_FOLDS, labels = FALSE))
@@ -76,7 +73,8 @@ createDFs <- function(df, partitions, partition_number = 1) {
   return(list(training = tr, validation = valid))
 }
 
-compute_metrics <- function(name = "dummy", preds = c(2, 1, 3, 8, 8, 2, 3, 6), test = c(7, 3, 4, 5, 6, 8, 5, 6)) {
+compute_metrics <- function(name = "dummy", preds = sample(seq(from = 0, to = 4, by = 0.5), replace = TRUE),
+                            test = sample(seq(from = 0, to = 4, by = 0.5), replace = TRUE)) {
   error <- data.frame(name = name,
                       mse = mse(actual = test, predicted = preds), # mean square error
                       rmse = rmse(actual = test, predicted = preds), # root mean square error
@@ -115,15 +113,24 @@ errors <- compute_metrics()
 
 # Regressione lineare semplice
 ```{r}
+# facciamo prima il test su 60
 library(glmnet)
 library(Metrics)
-model <- glm(TemperaturaCelle ~ ., family = gaussian, data = cella)
-predictions <- predict(model, newdata = cella_test)
+
+form <- paste0(target_y,"F15 ~ .")
+
+dataset_train <- cbind(cella_train, targets[-id_test,1])
+dataset_test <- cbind(cella_test, targets[id_test,1])
+
+model <- glm( formula = form, family = gaussian, data = dataset_train)
+predictions <- predict(model, newdata = dataset_test)
+
+y <- paste0(target_y,"F15")
 
 errors <- rbind(errors,
                 compute_metrics(name = "Simple Linear Regression",
                                 preds = predictions,
-                                test = cella_test$TemperaturaCelle
+                                test = unlist(dataset_test[y], use.names = FALSE)
                 )
 )
 ```
@@ -138,12 +145,12 @@ plot(model)
 library(ggplot2)
 
 x <- seq_along(predictions)
-df <- data.frame(x,y1=predictions,y2=cella_test$TemperaturaCelle)
+df <- data.frame(x,y1=predictions,y2=unlist(dataset_test[y], use.names = FALSE))
 
 ggplot(df, aes(x)) +                    # basic graphical object
   geom_line(aes(y=y1), colour="black") +  # first layer
   geom_line(aes(y=y2), colour="green") + # second layer
-        labs(title = "Temperatura cella", subtitle = "Predetta vs attuale") + xlab("Tempo") +
+        labs(title = "Temperatura Ritorno glicole", subtitle = "Predetta vs attuale") + xlab("Tempo") +
 ylab("Temperatura")
 
 
@@ -159,15 +166,15 @@ useful_predictors <- names(which(s$coefficients[, "Pr(>|t|)"] < REDUCED_TRESHOLD
 
 ```
 ```{r}
-formula <- create_formula(y = "TemperaturaCelle", useful_factors = useful_predictors)
+formula <- create_formula(y = y, useful_factors = useful_predictors)
 
-model <- glm(formula = formula, family = gaussian, data = cella)
-predictions <- predict(model, newdata = cella_test)
+model <- glm(formula = formula, family = gaussian, data = dataset_train)
+predictions <- predict(model, newdata = dataset_test)
 
 errors <- rbind(errors,
                 compute_metrics(name = "Simple Linear Regression (Reduced)",
                                 preds = predictions,
-                                test = cella_test$TemperaturaCelle
+                                test = unlist(dataset_test[y], use.names = FALSE)
                 )
 )
 
@@ -183,7 +190,7 @@ plot(model)
 library(ggplot2)
 
 x <- seq_along(predictions)
-df <- data.frame(x,y1=predictions,y2=cella_test$TemperaturaCelle)
+df <- data.frame(x,y1=predictions,y2=unlist(dataset_test[y], use.names = FALSE))
 
 ggplot(df, aes(x)) +                    # basic graphical object
   geom_line(aes(y=y1), colour="black") +  # first layer
@@ -198,6 +205,20 @@ saveRDS(formula, file = paste0("Codice/Metodi_Statistici/saved_parameters/Linear
 
 
 # Ridge
+
+```{r}
+# per i metodi che richiedono x e y
+x_train <- dataset_train %>% select(-(y))
+x_train <- data.matrix(x_train)
+y_train <- dataset_train %>% select((y))
+y_train <- unlist(y_train)
+
+x_test <- dataset_test %>% select(-(y))
+x_test <- data.matrix(x_test)
+y_test <- dataset_test %>% select((y))
+y_test <- unlist(y_test)
+```
+
 ```{r}
 # CV
 
@@ -228,7 +249,7 @@ saveRDS(bestlam, file = "Codice/Metodi_Statistici/saved_parameters/Linear_Regres
 library(ggplot2)
 
 x <- seq_along(predictions)
-df <- data.frame(x,y1=predictions,y2=cella_test$TemperaturaCelle)
+df <- data.frame(x,y1=predictions,y2=unlist(dataset_test[y], use.names = FALSE))
 
 ggplot(df, aes(x)) +                    # basic graphical object
   geom_line(aes(y=y1), colour="black") +  # first layer
@@ -272,7 +293,7 @@ saveRDS(bestlam, file = paste0("Codice/Metodi_Statistici/saved_parameters/Linear
 library(ggplot2)
 
 x <- seq_along(predictions)
-df <- data.frame(x,y1=predictions,y2=cella_test$TemperaturaCelle)
+df <- data.frame(x,y1=predictions,y2=unlist(dataset_test[y], use.names = FALSE))
 
 ggplot(df, aes(x)) +                    # basic graphical object
   geom_line(aes(y=y1), colour="black") +  # first layer
@@ -283,4 +304,89 @@ ylab("Temperatura")
 
 ```{r}
 saveRDS(object = errors[,-1], file = paste0("Codice/Metodi_Statistici/saved_parameters/metriche_errori/Regressioni_lineari_cella_",cell_number,".rds"))
+```
+
+```{r}
+dataset_train <- cella_train
+dataset_test <- cella_test
+
+
+test_errors <- compute_metrics()
+
+
+plots <- NULL
+
+test_for_plot <- data.frame(real=0, predicted=0)
+id <- sample(1:2000, 1)
+
+
+for(i in seq_len(ncol(targets))){
+  REDUCED_TRESHOLD <- 1e-2 # 0.01%
+  useful_predictors <- "."
+  n <- ncol(dataset_train) -1
+  y <- paste0(target_y,"F",i*15)
+  column <- targets %>% select(matches(paste0(y,"$")))
+  column_t <- column[-id_test,]
+  dataset_t <- cbind(dataset_train, column_t)
+  column_t <- column[id_test,]
+  dataset_ts <- cbind(dataset_test, column_t)
+  formula <- create_formula(y=y, useful_factors = useful_predictors)
+
+  while (length(useful_predictors) != n) {
+    model <- glm(formula = formula, family = gaussian, data = dataset_t)
+    n <- length(model$coefficients)-1
+    s <- summary(model)
+    useful_predictors <- names(which(s$coefficients[, "Pr(>|t|)"] < REDUCED_TRESHOLD)[-1]) # -1 per l-intercept
+
+    if(length(useful_predictors) == 0){
+      REDUCED_TRESHOLD <- 1e-1 # 0.01%
+      next
+    }
+    formula <- create_formula(y=y, useful_factors = useful_predictors)
+
+    }
+  predictions <- predict(model, newdata = dataset_ts)
+  test_errors <- rbind(test_errors,
+                compute_metrics(name = paste0("Simple Linear Regression (Reduced)(F",i*15,")"),
+                                preds = predictions,
+                                test = unlist(dataset_ts[y], use.names = FALSE)
+                )
+    )
+
+  test_y <- unlist(dataset_ts[y], use.names = FALSE)
+  test_for_plot <- rbind(test_for_plot, data.frame(real=test_y[id], predicted=predictions[id]))
+
+
+    ## plot
+    x <- seq_along(predictions)
+    df <- data.frame(x,y1=predictions,y2=test_y)
+
+    p <- ggplot(df, aes(x)) +                    # basic graphical object
+      geom_line(aes(y=y1), colour="black") +  # first layer
+      geom_line(aes(y=y2), colour="green") + # second layer
+            labs(title = "Temperatura ritorno glicole", subtitle = "Predetta vs attuale") + xlab("Tempo") +
+    ylab(y)
+
+    plots <- c(plots, list(p))
+
+}
+```
+```{r}
+for(p in plots){
+  plot(p)
+}
+```
+
+```{r}
+# esempio di predizione
+x <- seq(15,180,15)
+df <- data.frame(x,y1=test_for_plot$real[-1] ,y2=test_for_plot$predicted[-1])
+
+p <- ggplot(df, aes(x)) +                    # basic graphical object
+  geom_line(aes(y=y1), colour="black") +  # first layer
+  geom_line(aes(y=y2), colour="green") + # second layer
+        labs(title = "Temperatura ritorno glicole", subtitle = "Predetta vs attuale") + xlab("Tempo") +
+ylab(y) + ylim(0,3.5)
+
+p
 ```

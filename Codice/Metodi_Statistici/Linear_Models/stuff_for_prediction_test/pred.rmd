@@ -5,9 +5,9 @@ output: html_notebook
 
 ```{r}
 library(readr)
-numero_cella <- 13
-minuti_nel_futuro <- 180
-starting_minute <- 1
+numero_cella <- 18
+minuti_nel_futuro <- 60
+starting_minute <- 1000
 
 csv <- read.csv(paste0("CSV/october/Cella_",numero_cella,".csv"))
 csvp <- csv[starting_minute:(starting_minute+59),]
@@ -35,8 +35,8 @@ temperature_test <- unlist(fut$TemperaturaCelle)
 temperature_passate <- unlist(past$TemperaturaCelle)
 
 dati_forniti <- fut %>% select(-TemperaturaCelle)
-#modello <- readRDS(paste0("Codice/Metodi_Statistici/Linear_Models/modello_cella_",numero_cella,".rds"))
-modello <- readRDS(paste0("Codice/Metodi_Statistici/Linear_Models/test_modello_semplice_cella_",numero_cella,".rds"))
+modello <- readRDS(paste0("Codice/Metodi_Statistici/Linear_Models/modello_cella_",numero_cella,".rds"))
+# modello <- readRDS(paste0("Codice/Metodi_Statistici/Linear_Models/test_modello_semplice_cella_",numero_cella,".rds"))
 ```
 
 ```{r}

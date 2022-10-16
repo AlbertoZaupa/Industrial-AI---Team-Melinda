@@ -81,13 +81,16 @@ if csv_file == '':
     print("Missing argument: -i csv_path\nes: training(RNN).py -i csv_file_path")
     sys.exit(2)
 
-converter = importer.CellCsvConverter(useful_variables=["PercentualeAperturaValvolaMiscelatrice"
-                ,"PercentualeVelocitaVentilatori",
-                                "PompaGlicoleMarcia",
-                                "Raffreddamento",
-                                "TemperaturaCelle",
-                                "UmiditaRelativa",
-                                "VentilatoreMarcia"])
+converter = importer.CellCsvConverter(useful_variables=["PercentualeAperturaValvolaMiscelatrice",
+                                                        'PercentualeVelocitaVentilatori',
+                                                        'PompaGlicoleMarcia',
+                                                        'Raffreddamento',
+                                                        'TemperaturaCelle',
+                                                        'TemperaturaMandataGlicole',
+                                                        # TemperaturaMandataGlicoleNominale,
+                                                        'TemperaturaRitornoGlicole',
+                                                        'UmiditaRelativa',
+                                                       'VentilatoreMarcia'])
 train_dataset, validation_dataset, test_dataset = converter.Convert_csv_to_Dataset(csv_file, train_percentage=0.7,
                                                                                    normalize=False)
 
@@ -172,7 +175,7 @@ def format_predictions(predictions, values):
 
 def calculate_metrics(df):
     return {'mae': mean_absolute_error(df.value, df.prediction),
-            'rmse': mean_squared_error(df.value, df.prediction) ** 0.5,
+            'mse': mean_squared_error(df.value, df.prediction),
             'r2': r2_score(df.value, df.prediction)}
 
 
@@ -196,7 +199,7 @@ if plots == 1:
 results = {
     "network": neural_network_kind,
     "Mean Absolute Error": result_metrics['mae'],
-    'Root Mean Square Error': result_metrics['rmse'],
+    'Mean Square Error': result_metrics['mse'],
     'R2': result_metrics['r2']
 }
 

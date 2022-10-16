@@ -3,12 +3,16 @@ title: "R Notebook"
 output: html_notebook
 ---
 
-Aggiungiamo le predizioni passate
+Aggiungiamo le predizioni pas
 ```{r}
-lagged <- FALSE
+lagged <- TRUE
 lag <- 60
 data_dir <- "CSV/october"
 write_dir <- "Codice/Metodi_Statistici/lagged_datasets/"
+y <- "TemperaturaRitornoGlicole"
+saveRDS(y , file = "y.rds")
+resolution_step <- 15
+max_resolution <- 180
 
 REMOVE_NA <- TRUE
 
@@ -46,7 +50,10 @@ for (file in files) {
 
   if(lagged){
     for (i in 1:lag) {
-    df[, paste0("TemperaturaCelleP", i) := shift(df$TemperaturaCelle, i, type = "lag")]
+    df[, paste0(y,"P", i) := shift(df$TemperaturaCelle, i, type = "lag")]
+  }
+    for (i in seq(from = resolution_step, to = max_resolution, by = resolution_step)) {
+    df[, paste0(y,"F", i) := shift(df$TemperaturaCelle, i, type = "lead")]
   }
   }
 

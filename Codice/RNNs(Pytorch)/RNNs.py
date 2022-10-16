@@ -198,7 +198,7 @@ class Optimization:
                     f"[{epoch}/{n_epochs}] Training loss: {training_loss:.4f}\t Validation loss: {validation_loss:.4f}"
                 )
 
-        torch.save(self.model.state_dict(), model_path)
+        # torch.save(self.model.state_dict(), model_path)
 
     def plot_losses(self):
         plt.plot(self.train_losses, label="Training loss")

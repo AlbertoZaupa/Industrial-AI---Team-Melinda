@@ -9,7 +9,7 @@ library(readr)
 library(tidyverse)
 
 cell_file <- "Codice/Metodi_Statistici/lagged_datasets/Cella_13.csv"
-cell_number <- 13
+cell_number <- 23
 
 #leggiamo il dataset della cella
 cella <- read_csv(cell_file)
@@ -134,20 +134,21 @@ errors <- rbind(errors,
                                 test = cella_test$TemperaturaCelle
                 )
 )
+model <- glm(formula = formule, family = gaussian, data = cella)
 ```
 ```{r}
 saveRDS(model,paste0("Codice/Metodi_Statistici/Linear_Models/test_modello_semplice_cella_", cell_number,".rds"))
 ```
 
 ```{r}
-# library(ggplot2)
-#
-# x <- seq_along(predictions)
-# df <- data.frame(x,y1=predictions,y2=cella_test$TemperaturaCelle)
-#
-# ggplot(df, aes(x)) +                    # basic graphical object
-#   geom_line(aes(y=y1), colour="black") +  # first layer
-#   geom_line(aes(y=y2), colour="green") + # second layer
-#         labs(title = "Temperatura cella", subtitle = "Predetta vs attuale") + xlab("Tempo") +
-# ylab("Temperatura")
+library(ggplot2)
+
+x <- seq_along(predictions)
+df <- data.frame(x,y1=predictions,y2=cella_test$TemperaturaCelle)
+
+ggplot(df, aes(x)) +                    # basic graphical object
+  geom_line(aes(y=y1), colour="black") +  # first layer
+  geom_line(aes(y=y2), colour="green") + # second layer
+        labs(title = "Temperatura cella", subtitle = "Predetta vs attuale") + xlab("Tempo") +
+ylab("Temperatura") + ylim(0,3.5)
 ```

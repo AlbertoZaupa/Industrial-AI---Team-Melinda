@@ -30,7 +30,7 @@ cella <- cella %>% select(-starts_with(paste0(target_y,"F")))
 
 cella$TemperaturaMandataGlicoleNominale <- NULL
 # cella$TemperaturaMandataGlicole
-cella$PompaGlicoleMarcia <- NULL
+# cella$PompaGlicoleMarcia <- NULL
 
 
 # cella$VentilatoreMarcia <- NULL

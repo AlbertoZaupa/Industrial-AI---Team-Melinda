@@ -7,7 +7,8 @@ output: html_notebook
 library(readr)
 
 cell_file <- "Codice/Metodi_Statistici/lagged_datasets/Cella_15.csv"
-cell_number <- 15
+cell_number <- 18
+target_y <- readRDS("y.rds")
 
 #leggiamo il dataset della cella
 cella <- read_csv(cell_file)
@@ -16,13 +17,17 @@ spec(cella) # per vedere se ci sono problemi
 ```
 
 ```{r}
+targets <- cella %>% select(starts_with(paste0(target_y,"F")))
+cella <- cella %>% select(-starts_with(paste0(target_y,"F")))
+
 # fix colonne
 cella$PompaGlicoleMarcia <- as.factor(cella$PompaGlicoleMarcia)
 cella$Raffreddamento <- as.factor(cella$Raffreddamento)
 cella$VentilatoreMarcia <- as.factor(cella$VentilatoreMarcia)
 
 cella$TemperaturaMandataGlicoleNominale <- NULL
-
+# cella$TemperaturaMandataGlicole
+# cella$PompaGlicoleMarcia <- NULL
 ```
 
 Type any R code in the chunk, for example:
@@ -49,7 +54,7 @@ MAX_TREES <- 100
 id_test <- as.integer(DATASET_SIZE * (1 - TEST_SIZE)):DATASET_SIZE
 
 cella_test <- cella[id_test,]
-cella <- cella[-id_test,]
+cella_train <- cella[-id_test,]
 
 # per i metodi che richiedono x e y
 x_train <- cella %>% select(-TemperaturaCelle)
@@ -105,7 +110,12 @@ errors <- compute_metrics()
 # Simple Tree
 ```{r}
 library(tree)
-model <- tree(formula = TemperaturaCelle ~ ., data = cella)
+y <- paste0(target_y,"F60")
+
+train_dataset <- cbind(cella_train, targets[-id_test,4])
+test_dataset <- cbind(cella_test, targets[id_test,4])
+form <- paste0(y," ~ .")
+model <- tree(formula = form, data = train_dataset)
 summary(model)
 plot(model)
 text(model, pretty = 0)
@@ -113,8 +123,8 @@ title(main = "Tree model for cell Temperature", sub = "Unpruned regression tree"
 ```
 
 ```{r}
-predictions <- predict(model, cella_test)
-errors <- rbind(compute_metrics(name = "Simple Tree", preds = predictions, test = cella_test$TemperaturaCelle))
+predictions <- predict(model, test_dataset)
+errors <- rbind(compute_metrics(name = "Simple Tree", preds = predictions, test = unlist(test_dataset[y], use.names = FALSE)))
 ```
 
 
@@ -122,7 +132,7 @@ errors <- rbind(compute_metrics(name = "Simple Tree", preds = predictions, test 
 library(ggplot2)
 
 x <- seq_along(predictions)
-df <- data.frame(x, y1 = predictions, y2 = cella_test$TemperaturaCelle)
+df <- data.frame(x, y1 = predictions, y2 = unlist(test_dataset[y], use.names = FALSE))
 
 ggplot(df, aes(x)) +                    # basic graphical object
   geom_line(aes(y = y1), colour = "black") +  # first layer
@@ -157,14 +167,14 @@ predictions <- predict(model_pruned, cella_test)
 errors <- rbind(errors, compute_metrics(
   name = paste0("Pruned Tree (best size: ", best_size),
   preds = predictions,
-  test = cella_test$TemperaturaCelle))
+  test = unlist(test_dataset[y], use.names = FALSE)))
 ```
 
 ```{r}
 library(ggplot2)
 
 x <- seq_along(predictions)
-df <- data.frame(x, y1 = predictions, y2 = cella_test$TemperaturaCelle)
+df <- data.frame(x, y1 = predictions, y2 = unlist(test_dataset[y], use.names = FALSE))
 
 ggplot(df, aes(x)) +                    # basic graphical object
   geom_line(aes(y = y1), colour = "black") +  # first layer
@@ -179,24 +189,24 @@ ggplot(df, aes(x)) +                    # basic graphical object
 ```{r}
 # NB: Takes a lot
 library(randomForest)
-max_predictors <- ncol(cella) - 1
-model_bagging <- randomForest(TemperaturaCelle ~ ., data = cella, ntree = MAX_TREES, mtry = max_predictors)
+max_predictors <- ncol(cella_train) - 1
+model_bagging <- randomForest(formula = formula(form), data = train_dataset, ntree = MAX_TREES, mtry = max_predictors)
 plot(model_bagging)
 ```
 
 ```{r}
-predictions <- predict(model_bagging, cella_test)
+predictions <- predict(model_bagging, test_dataset)
 errors <- rbind(errors, compute_metrics(
   name = paste0("Bagged Tree (N_trees: ", MAX_TREES),
   preds = predictions,
-  test = cella_test$TemperaturaCelle))
+  test = unlist(test_dataset[y], use.names = FALSE)))
 ```
 
 ```{r}
 library(ggplot2)
 
 x <- seq_along(predictions)
-df <- data.frame(x, y1 = predictions, y2 = cella_test$TemperaturaCelle)
+df <- data.frame(x, y1 = predictions, y2 = unlist(test_dataset[y], use.names = FALSE))
 
 ggplot(df, aes(x)) +                    # basic graphical object
   geom_line(aes(y = y1), colour = "black") +  # first layer
@@ -222,24 +232,24 @@ ggplot(df, aes(x)) +                    # basic graphical object
 ```
 ```{r}
 library(randomForest) # p/3 predittori
-model_rf <- randomForest(TemperaturaCelle ~ ., data = cella, ntree = MAX_TREES)
+model_rf <- randomForest(formula = formula(form), data = train_dataset, ntree = MAX_TREES)
 plot(model_rf)
 varImpPlot(model_rf)
 ```
 
 ```{r}
-predictions <- predict(model_rf, cella_test)
+predictions <- predict(model_rf, test_dataset)
 errors <- rbind(errors, compute_metrics(
   name = paste0("Random Forest (N_trees: ", MAX_TREES),
   preds = predictions,
-  test = cella_test$TemperaturaCelle))
+  test = unlist(test_dataset[y], use.names = FALSE)))
 ```
 
 ```{r}
 library(ggplot2)
 
 x <- seq_along(predictions)
-df <- data.frame(x, y1 = predictions, y2 = cella_test$TemperaturaCelle)
+df <- data.frame(x, y1 = predictions, y2 = unlist(test_dataset[y], use.names = FALSE))
 
 ggplot(df, aes(x)) +                    # basic graphical object
   geom_line(aes(y = y1), colour = "black") +  # first layer
@@ -256,8 +266,8 @@ library(caret)
 # reference: https://rpubs.com/mpfoley73/529130
 
 # re_encode variables
-boosting_model <- train(TemperaturaCelle ~ .,
-                        data = cella,
+boosting_model <- train(formula(form),
+                        data = train_dataset,
                         method = "gbm",  # for bagged tree
                         tuneLength = 5,  # choose up to 5 combinations of tuning parameters
                         metric = "mse",  # evaluate hyperparamter combinations with ROC
@@ -283,21 +293,21 @@ predictions <- predict(boosting_model, cella_test)
 errors <- rbind(errors, compute_metrics(
   name = paste0("Boosted Trees"),
   preds = predictions,
-  test = cella_test$TemperaturaCelle))
+  test = unlist(test_dataset[y])))
 ```
 
 ```{r}
 library(ggplot2)
 
 x <- seq_along(predictions)
-df <- data.frame(x, y1 = predictions, y2 = cella_test$TemperaturaCelle)
+df <- data.frame(x, y1 = predictions, y2 = unlist(test_dataset[y]))
 
 ggplot(df, aes(x)) +                    # basic graphical object
   geom_line(aes(y = y1), colour = "black") +  # first layer
   geom_line(aes(y = y2), colour = "green") + # second layer
   labs(title = "Temperatura cella", subtitle = "Predetta vs attuale") +
   xlab("Tempo") +
-  ylab("Temperatura")
+  ylab("Temperatura") + ylim(0,3.5)
 ```
 
 
@@ -314,13 +324,13 @@ wbart_model <- mc.wbart(x_train, y_train, mc.cores = 8, x.test = x_test)
 errors <- rbind(errors, compute_metrics(
   name = paste0("BART"),
   preds = wbart_model$yhat.test.mean,
-  test = cella_test$TemperaturaCelle))
+  test = unlist(test_dataset[y])))
 ```
 ```{r}
 library(ggplot2)
 
 x <- seq_along(predictions)
-df <- data.frame(x, y1 = predictions, y2 = cella_test$TemperaturaCelle)
+df <- data.frame(x, y1 = predictions, y2 = unlist(test_dataset[y]))
 
 ggplot(df, aes(x)) +                    # basic graphical object
   geom_line(aes(y = y1), colour = "black") +  # first layer

@@ -4,47 +4,60 @@ output: html_notebook
 ---
 
 ```{r}
-csv <- read.csv("CSV/october/Cella_15.csv")
-csvp <- csv[1:60,]
-write_csv(csvp,"Codice/Metodi_Statistici/Linear_Models/stuff_for_prediction_test/dati_passati.csv")
-csvf <- csv[61:120,]
-write_csv(csvf,"Codice/Metodi_Statistici/Linear_Models/stuff_for_prediction_test/dati_futuri.csv")
+cella <- read.csv("CSV/october/Cella_15.csv")
 ```
 
 ```{r}
-library(readr)
-cella <- read_csv("Codice/Metodi_Statistici/lagged_datasets/Cella_15.csv")
-plot(seq_along(cella$PompaGlicoleMarcia), cella$PompaGlicoleMarcia)
+x <- seq_len(nrow(cella))
 ```
 
 
 ```{r}
-plot(density(cella$TemperaturaMandataGlicole))
-plot(density(cella$TemperaturaRitornoGlicole))
-plot(density(cella$TemperaturaCelle))
-plot(density(cella$PercentualeAperturaValvolaMiscelatrice))
+y <- cella$PompaGlicoleMarcia
+plot(density(y))
+plot(x, y)
 ```
 
 ```{r}
-plot(cella$TemperaturaMandataGlicoleNominale, cella$TemperaturaMandataGlicole)
+y <- cella$TemperaturaMandataGlicole
+plot(density(y))
+plot(x, y)
+```
+```{r}
+y <- cella$TemperaturaCelle
+plot(density(y))
+plot(x, y)
 ```
 
 ```{r}
-l <- length(cella$TemperaturaMandataGlicole)
-ids <- sample(1:l, as.integer(l * 0.2))
-
-train_x <- cella$TemperaturaMandataGlicoleNominale[-ids]
-train_y <- cella$TemperaturaMandataGlicole[-ids]
-
-test_x <- as.data.frame(cella$TemperaturaMandataGlicoleNominale[ids])
-test_y <- cella$TemperaturaMandataGlicole[ids]
-
-model <- glm(train_y ~ train_x)
-summary(model)
+y <- cella$TemperaturaRitornoGlicole
+plot(density(y))
+plot(x, y)
 ```
 
 ```{r}
-library(Metrics)
-preds <- predict(model, newdata = test_x)
-mse(test_y, preds)
+y <- cella$PercentualeAperturaValvolaMiscelatrice
+plot(density(y))
+plot(x, y)
+```
+```{r}
+y <- cella$Raffreddamento
+plot(density(y))
+plot(x, y)
+```
+```{r}
+y <- cella$UmiditaRelativa
+plot(density(y))
+plot(x, y)
+```
+
+```{r}
+y <- cella$VentilatoreMarcia
+plot(density(y))
+plot(x, y)
+```
+```{r}
+y <- cella$PercentualeVelocitaVentilatori
+plot(density(y))
+plot(x, y)
 ```

@@ -3,7 +3,7 @@
 *.bk
 */models/
 */log.txt
-
+*.7z
 
 ### CVS template
 CVS/*

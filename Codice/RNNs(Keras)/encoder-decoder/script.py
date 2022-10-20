@@ -1,6 +1,7 @@
 import argparse
 
 import matplotlib.pyplot as plt
+import numpy as np
 import pandas as pd
 
 from dataset import prepare_dataset
@@ -48,7 +49,7 @@ if __name__ == '__main__':
     scaled_df = pd.DataFrame()
     for column in df.columns:
         scaled_df[column] = (df[column] - scaling_factors[column][0]) / (
-                    scaling_factors[column][1] - scaling_factors[column][0])
+                scaling_factors[column][1] - scaling_factors[column][0])
 
     # OPPURE, per scalare
 
@@ -70,8 +71,9 @@ if __name__ == '__main__':
 
     # viene plottato il valore della variabile target
     x_axis = range(test_df.shape[0])
-    plt.plot(x_axis, test_df[target_column] * scaling_factors[target_column][1])
-    plt.show()
+
+    # plt.plot(x_axis, test_df[target_column] * scaling_factors[target_column][1])
+    # plt.show()
 
     # vengono preparati i dataset
     N_INPUT_FEATURES = 1
@@ -108,6 +110,10 @@ if __name__ == '__main__':
         for v in pred[:, -1]:
             pred_flat.append(v)
 
+    mse = ((np.array([t.numpy() for t in truth_flat]) - np.array([p[0] for p in pred_flat])) ** 2).mean()
+
+    plt.title(f'Predictions vs. ground truth')
+    plt.suptitle(f'MSE: %.4f' % mse)
     plt.plot(truth_flat, label="Truth")
     plt.plot(pred_flat, label="Prediction")
     plt.legend()

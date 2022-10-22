@@ -14,6 +14,22 @@ for (file in list.files(path = "./Dati originali", pattern = pattern, full.names
   month_data <- append(month_data, list(read_delim(file = file, delim = ";")))
 }
 ```
+
+# Glance
+
+```{r}
+df <- month_data[[1]]
+summary(df)
+rm(df)
+
+# problemi:
+# PercentualeAperturaValvolaMiscelatrice arriva fino a 721313
+# le temperature sono characters, quindi vanno modificate le stringhe per vere . al posto di , e poi convertite in double
+# temperatura mandata glicole nominale ha NA e la temperatura arriva fino a -50675
+# PompaGlicoleMarcia della cella 16 e' sempre 0. Anche VentilatoreMarcia
+# da cles atuenetto sono quasi solo NA
+```
+
 # Suddividere
 
 ```{r}
@@ -30,18 +46,23 @@ for (composite_csv in month_data) {
   composite_csv <- composite_csv[,-((ncol(composite_csv) - 4):ncol(composite_csv))]
   # rinomina le colonne (toglie ipogeo)
   pattern <- "Ipogeo.*_C"
-  names(composite_csv) <- gsub(pattern = "Ipogeo.*_C", replacement = "C", x = names(composite_csv))
+  names(composite_csv) <- gsub(pattern = "Ipogeo.*_", replacement = "", x = names(composite_csv))
+
+  # seleziona i predittori comuni a tutte le celle
+  pattern <- paste0("Cella")
+  common_predictors <- composite_csv %>% select(-matches(pattern)) # dataframe con solo le colonne della cella
   for (i in 1:TENTATIVI) {
     # seleziona le colonne della cella i
     # lista per le celle
     pattern <- paste0("Cella", i, "[A-Z]")
-    data <- composite_csv %>% select(Date, matches(pattern)) # dataframe con solo le colonne della cella
-    if (ncol(data) == 1) { # se sono finite le celle, quindi c'è solo la data
-      next # le celle non sono in ordine
+    data <- composite_csv %>% select(matches(pattern)) # dataframe con solo le colonne della cella
+    if (ncol(data) == 0) { # se sono finite le celle, quindi c'è solo la data
+      next # la cella numer i non esiste
     } else {
      # rimuove "Cellan" dai nomi
     pattern <- paste0("Cella", i)
     names(data) <- gsub(pattern = pattern, replacement = "", x = names(data))
+    data <- cbind(common_predictors, data)
     celle[i] <- list(data)
     # esempio data: tutte le variabili che iniziano con "Ipogeo2"
     }

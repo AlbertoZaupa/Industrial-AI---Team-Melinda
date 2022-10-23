@@ -1,0 +1,291 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r, results = 'hide'}
+library(readr)
+
+lagged <- TRUE
+cell_number <- 18
+
+F_PRED <- 60
+
+cell_file <- paste0("Codice/Metodi_Statistici/lagged_datasets/Cella_",cell_number,".csv")
+target_y <- readRDS("y.rds")
+
+#leggiamo il dataset della cella
+cella <- read_csv(cell_file)
+
+cella$Date <- NULL  # rimuove la prima colonna dato che ha l'orario
+cella$UmiditaRelativa
+
+cella[target_y] <- lapply(cella[target_y], factor) # se stiamo facendo classificazione (es: apertura della pompa) trasformiamo la y in fattore
+
+# da vedere se conviene convertire anche il resto
+if(lagged){
+  targets <- NULL
+  for(i in seq(from = 1, to = 60, by = 1)){
+    targets <- c(targets, paste0(target_y,"P",i))
+  }
+  cella[targets] <- lapply(cella[target_y], factor)
+}
+rm(targets)
+
+# spec(cella) # per vedere se ci sono problemi
+
+```
+
+```{r}
+library(tidyverse)
+# separa dataset
+targets <- cella %>% select(starts_with(paste0(target_y,"F")))
+cella <- cella %>% select(-starts_with(paste0(target_y,"F")))
+if(!lagged){
+  cella <- cella %>% select(-starts_with(paste0(target_y,"P")))
+}
+
+# fix colonne
+cella$PompaGlicoleMarcia <- factor(cella$PompaGlicoleMarcia)
+cella$Raffreddamento <- factor(cella$Raffreddamento)
+cella$VentilatoreMarcia <- factor(cella$VentilatoreMarcia)
+
+
+y <- paste0(target_y,"F", F_PRED)
+
+cella <- cbind(cella, targets[y])
+
+
+cella[y] <- lapply(cella[y], factor)
+
+# cella$TemperaturaMandataGlicoleNominale <- NULL
+# cella$TemperaturaMandataGlicole
+# cella$PompaGlicoleMarcia <- NULL
+# cella$UmiditaRelativa <- NULL # #TODO: capire a cosa serve
+```
+
+Type any R code in the chunk, for example:
+```{r}
+cella <- as_tibble(cella)
+summary(cella) # assicuriamoci che vada tutto bene
+```
+
+```{r}
+library(Metrics)
+
+# suddivisione
+DATASET_SIZE <- nrow(cella)
+
+TEST_SIZE <- 0.2
+# TUNING_SIZE <- 0.8
+CONFIDENCE_TRESHOLD <- 50 / 100
+
+K_FOLDS <- 10
+MAX_TREES <- 500
+
+
+id_test <- as.integer(DATASET_SIZE * (1 - TEST_SIZE)):DATASET_SIZE
+
+cella_test <- cella[id_test,]
+old_cella_train <- cella[-id_test,]
+
+tmp <- old_cella_train[old_cella_train[y] == 1,]
+tmp2 <- old_cella_train[old_cella_train[y] != 1,]
+tmp_id <- sample(seq_len(nrow(tmp2)),nrow(tmp))
+cella_train <- rbind(tmp, tmp2[tmp_id,])
+
+rm(old_cella_train, tmp, tmp2, tmp_id)
+
+
+compute_metrics<- function(name = "dummy", preds = sample(0:1, 10,TRUE), test = sample(0:1, 10,TRUE)) {
+  error <- data.frame(name = name,
+                      auc = auc(actual = test, predicted = preds), # area under the curve
+                      accuracy = accuracy(actual = test, predicted = preds), # simple accuracy
+                      ce = ce(actual = test, predicted = preds), # classification error
+                      f1 = f1(actual = test, predicted = preds)# , # F1 score
+                      # precision = precision(actual = test, predicted = preds), # precision
+                      # recall = recall(actual = test, predicted = preds) # recall
+  )
+
+  return(error)
+}
+
+errors <- compute_metrics()
+
+#TODO: sistemare
+
+```
+
+
+
+
+# Simple Tree
+```{r}
+library(tree)
+
+
+form <- paste0(y," ~ .")
+model <- tree(formula = form, data = cella_train)
+summary(model)
+plot(model)
+text(model, pretty = 0)
+title(main = "Tree model for Pompa Glicole Marcia", sub = "Unpruned regression tree")
+```
+
+```{r}
+predictions <- predict(model, cella_test)
+
+predictions <- unlist(ifelse(predictions > CONFIDENCE_TRESHOLD, 0, 1)[,1], use.names = FALSE)
+
+errors <- rbind(compute_metrics(name = "Simple Tree", preds = predictions, test = unlist(cella_test[y], use.names = FALSE)))
+```
+
+
+```{r}
+errors
+
+```
+
+## Pruning
+```{r}
+
+cv_train <- cv.tree(model, , prune.tree)
+# 10 fold cv
+plot(cv_train$size, cv_train$dev, type = "b", main = 'Cross-validation: first batch result',
+     xlab = 'Tree size', ylab = 'Cross validation error')
+
+# print optimal size
+best_size <- cv_train$size[which.min(cv_train$dev)]
+paste('Optimal size:', best_size)
+saveRDS(best_size, file = paste0("Codice/Metodi_Statistici/saved_parameters/Trees/Pruned_Tree_best_size_cella_",cell_number))
+```
+```{r}
+model_pruned <- prune.tree(model, best = best_size)
+plot(model_pruned)
+text(model_pruned, pretty = 0)
+summary(model_pruned)
+```
+
+```{r}
+predictions <- predict(model_pruned, cella_test)
+predictions <- unlist(ifelse(predictions > CONFIDENCE_TRESHOLD, 0, 1)[,1], use.names = FALSE)
+errors <- rbind(errors, compute_metrics(
+  name = paste0("Pruned Tree (best size: ", best_size),
+  preds = predictions,
+  test = unlist(cella_test[y], use.names = FALSE)))
+```
+
+```{r}
+errors
+```
+
+## Bagging
+
+```{r}
+# NB: Takes a lot
+library(randomForest)
+max_predictors <- ncol(cella_train) - 1
+model_bagging <- randomForest(formula = formula(form), data = cella_train, ntree = MAX_TREES, mtry = max_predictors)
+plot(model_bagging)
+```
+
+```{r}
+predictions <- predict(model_bagging, cella_test)
+errors <- rbind(errors, compute_metrics(
+  name = paste0("Bagged Tree (N_trees: ", MAX_TREES),
+  preds = predictions,
+  test = unlist(cella_test[y], use.names = FALSE)))
+```
+
+```{r}
+errors
+```
+
+## Random forest
+
+```{r}
+# # Ci mette troppo. Ci conviene usare il default
+# mse <- NULL
+#
+# for (m in seq_len(max_predictors - 1)) {
+#   rf_tmp <- randomForest(TemperaturaCelle ~ ., data = cella, mtry = m, ntree = MAX_TREES)
+#   mse <- c(mse, mean(rf_tmp$mse))
+# }
+#
+# minim <- which.min(mse)
+# saveRDS(minim, file = paste0("Codice/Metodi_Statistici/saved_parameters/Trees/rf_best_size_cella_", cell_number))
+```
+```{r}
+library(randomForest) # sqrt predittori
+model_rf <- randomForest(formula = formula(form), data = cella_train, ntree = MAX_TREES)
+plot(model_rf)
+varImpPlot(model_rf)
+```
+
+```{r}
+predictions <- predict(model_rf, cella_test)
+errors <- rbind(errors, compute_metrics(
+  name = paste0("Random Forest (N_trees: ", MAX_TREES),
+  preds = predictions,
+  test = unlist(cella_test[y], use.names = FALSE)))
+```
+
+```{r}
+errors
+```
+
+## Boosting
+```{r}
+library(caret)
+
+# reference: https://rpubs.com/mpfoley73/529130
+
+# re_encode variables
+boosting_model <- train(formula(form),
+                        data = cella_train,
+                        method = "gbm",  # for bagged tree
+                        tuneLength = 5,  # choose up to 5 combinations of tuning parameters
+                        trControl = trainControl(
+                          method = "cv",  # k-fold cross validation
+                          number = K_FOLDS,  # 10 folds
+                          savePredictions = "final"      # save predictions for the optimal tuning parameter1
+                        )
+)
+# caret tunes:
+#    n.trees: number of boosting iterations
+#    interaction.depth: maximum tree depth
+#    shrinkage: shrinkage
+#   n.minobsinnode: mimimum terminal node size
+
+```
+```{r}
+plot(boosting_model)
+```
+
+```{r}
+predictions <- predict(boosting_model, cella_test)
+errors <- rbind(errors, compute_metrics(
+  name = paste0("Boosted Trees"),
+  preds = predictions,
+  test = unlist(cella_test[y], use.names = FALSE)))
+```
+
+```{r}
+errors
+```
+
+
+```{r}
+saveRDS(errors, file = paste0("Codice/Metodi_Statistici/saved_parameters/metriche_errori/Alberi_cella_",cell_number,".rds"))
+```
+
+```{r}
+
+predictions <- predict(model_pruned, cella)
+predictions <- unlist(ifelse(predictions > CONFIDENCE_TRESHOLD, 0, 1)[,1], use.names = FALSE)
+
+errors <- rbind(errors, compute_metrics(
+  name = paste0("Final test"),
+  preds = predictions,
+  test = unlist(cella[y], use.names = FALSE)))
+```

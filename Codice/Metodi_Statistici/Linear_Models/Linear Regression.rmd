@@ -6,8 +6,13 @@ output: html_notebook
 ```{r}
 library(readr)
 
-cell_file <- "Codice/Metodi_Statistici/lagged_datasets/Cella_15.csv"
+lagged <- FALSE
 cell_number <- 18
+
+cell_file <- paste0("Codice/Metodi_Statistici/lagged_datasets/Cella_",cell_number,".csv")
+
+
+
 target_y <- readRDS("y.rds")
 
 #leggiamo il dataset della cella
@@ -26,9 +31,12 @@ library(tidyverse)
 # separa dataset
 targets <- cella %>% select(starts_with(paste0(target_y,"F")))
 cella <- cella %>% select(-starts_with(paste0(target_y,"F")))
+if(!lagged){
+  cella <- cella %>% select(-starts_with(paste0(target_y,"P")))
+}
 
 
-cella$TemperaturaMandataGlicoleNominale <- NULL
+# cella$TemperaturaMandataGlicoleNominale <- NULL
 # cella$TemperaturaMandataGlicole
 # cella$PompaGlicoleMarcia <- NULL
 
@@ -109,6 +117,26 @@ create_formula <- function (y="y", useful_factors="."){
 
 errors <- compute_metrics()
 
+library(ggplot2)
+
+
+create_plot_predictions <- function (predictions, test_y, true_color, predicted_color, y_name="Percentuale Apertura Valvola Miscelatrice", ylim_inf=0, ylim_sup=100){
+  x <- seq_along(predictions)
+  df <- data.frame(x,Predetta=predictions,Veri=test_y)
+
+
+  colors <- c("Predetta" = predicted_color, "Veri" = true_color)
+
+
+  gg <- ggplot(df, aes(x)) +                    # basic graphical object
+  geom_line(aes(y=Predetta, colour="Predetta")) +  # first layer
+  geom_line(aes(y=Veri, colour="Veri")) + # second layer
+        labs(title = y_name, subtitle = "Predetta vs Valori veri",color = "Legend") +
+    scale_color_manual(values = colors) + xlab("Tempo") +
+ylab("Temperatura") + ylim(ylim_inf, ylim_sup)
+  return(gg)
+}
+
 ```
 
 # Regressione lineare semplice
@@ -142,18 +170,9 @@ plot(model)
 ```
 
 ```{r}
-library(ggplot2)
-
-x <- seq_along(predictions)
-df <- data.frame(x,y1=predictions,y2=unlist(dataset_test[y], use.names = FALSE))
-
-ggplot(df, aes(x)) +                    # basic graphical object
-  geom_line(aes(y=y1), colour="black") +  # first layer
-  geom_line(aes(y=y2), colour="green") + # second layer
-        labs(title = "Temperatura Ritorno glicole", subtitle = "Predetta vs attuale") + xlab("Tempo") +
-ylab("Temperatura")
-
-
+create_plot_predictions(predictions = predictions, test_y = unlist(dataset_test[y]),
+                        true_color = "black", predicted_color = "orange",
+                        y_name=y)
 ```
 
 
@@ -187,16 +206,9 @@ plot(model)
 ```
 
 ```{r}
-library(ggplot2)
-
-x <- seq_along(predictions)
-df <- data.frame(x,y1=predictions,y2=unlist(dataset_test[y], use.names = FALSE))
-
-ggplot(df, aes(x)) +                    # basic graphical object
-  geom_line(aes(y=y1), colour="black") +  # first layer
-  geom_line(aes(y=y2), colour="green") + # second layer
-        labs(title = "Temperatura cella", subtitle = "Predetta vs attuale") + xlab("Tempo") +
-ylab("Temperatura")
+create_plot_predictions(predictions = predictions, test_y = unlist(dataset_test[y]),
+                        true_color = "black", predicted_color = "orange",
+                        y_name=y)
 ```
 
 ```{r}
@@ -246,16 +258,9 @@ errors <- rbind(errors,
 saveRDS(bestlam, file = "Codice/Metodi_Statistici/saved_parameters/Linear_Regression/best_lambda_ridge.rds")
 ```
 ```{r}
-library(ggplot2)
-
-x <- seq_along(predictions)
-df <- data.frame(x,y1=predictions,y2=unlist(dataset_test[y], use.names = FALSE))
-
-ggplot(df, aes(x)) +                    # basic graphical object
-  geom_line(aes(y=y1), colour="black") +  # first layer
-  geom_line(aes(y=y2), colour="green") + # second layer
-        labs(title = "Temperatura cella", subtitle = "Predetta vs attuale") + xlab("Tempo") +
-ylab("Temperatura")
+create_plot_predictions(predictions = predictions, test_y = unlist(dataset_test[y]),
+                        true_color = "black", predicted_color = "orange",
+                        y_name=y)
 ```
 
 
@@ -290,16 +295,9 @@ saveRDS(bestlam, file = paste0("Codice/Metodi_Statistici/saved_parameters/Linear
 
 
 ```{r}
-library(ggplot2)
-
-x <- seq_along(predictions)
-df <- data.frame(x,y1=predictions,y2=unlist(dataset_test[y], use.names = FALSE))
-
-ggplot(df, aes(x)) +                    # basic graphical object
-  geom_line(aes(y=y1), colour="black") +  # first layer
-  geom_line(aes(y=y2), colour="green") + # second layer
-        labs(title = "Temperatura cella", subtitle = "Predetta vs attuale") + xlab("Tempo") +
-ylab("Temperatura")
+create_plot_predictions(predictions = predictions, test_y = unlist(dataset_test[y]),
+                        true_color = "black", predicted_color = "orange",
+                        y_name=y)
 ```
 
 ```{r}
@@ -353,19 +351,11 @@ for(i in seq_len(ncol(targets))){
                 )
     )
 
-  test_y <- unlist(dataset_ts[y], use.names = FALSE)
-  test_for_plot <- rbind(test_for_plot, data.frame(real=test_y[id], predicted=predictions[id]))
-
 
     ## plot
-    x <- seq_along(predictions)
-    df <- data.frame(x,y1=predictions,y2=test_y)
-
-    p <- ggplot(df, aes(x)) +                    # basic graphical object
-      geom_line(aes(y=y1), colour="black") +  # first layer
-      geom_line(aes(y=y2), colour="green") + # second layer
-            labs(title = "Temperatura ritorno glicole", subtitle = "Predetta vs attuale") + xlab("Tempo") +
-    ylab(y)
+    p <- create_plot_predictions(predictions = predictions, test_y = unlist(dataset_ts[y]),
+                        true_color = "black", predicted_color = "orange",
+                        y_name=y)
 
     plots <- c(plots, list(p))
 
@@ -377,16 +367,3 @@ for(p in plots){
 }
 ```
 
-```{r}
-# esempio di predizione
-x <- seq(15,180,15)
-df <- data.frame(x,y1=test_for_plot$real[-1] ,y2=test_for_plot$predicted[-1])
-
-p <- ggplot(df, aes(x)) +                    # basic graphical object
-  geom_line(aes(y=y1), colour="black") +  # first layer
-  geom_line(aes(y=y2), colour="green") + # second layer
-        labs(title = "Temperatura ritorno glicole", subtitle = "Predetta vs attuale") + xlab("Tempo") +
-ylab(y) + ylim(0,3.5)
-
-p
-```

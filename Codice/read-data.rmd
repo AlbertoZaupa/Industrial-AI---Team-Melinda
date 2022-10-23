@@ -11,7 +11,7 @@ month_data <- list()
 pattern <- "*.csv$" # pattern: termina con .csv
 # polish data
 for (file in list.files(path = "./Dati originali", pattern = pattern, full.names = TRUE)) {
-  month_data <- append(month_data, list(read_delim(file = file, delim = ";")))
+  month_data <- append(month_data, list(read_csv2(file = file)))
 }
 ```
 
@@ -43,7 +43,7 @@ for (composite_csv in month_data) {
   # rimuove l'ultima colonna perchè sono solo NA
   composite_csv <- composite_csv[,-ncol(composite_csv)]
   # le colonne Tuenetto, tassullo, denno e cles sono piene di NA pure loro
-  composite_csv <- composite_csv[,-((ncol(composite_csv) - 4):ncol(composite_csv))]
+  composite_csv <- composite_csv[,-((ncol(composite_csv) - 3):ncol(composite_csv))]
   # rinomina le colonne (toglie ipogeo)
   pattern <- "Ipogeo.*_C"
   names(composite_csv) <- gsub(pattern = "Ipogeo.*_", replacement = "", x = names(composite_csv))

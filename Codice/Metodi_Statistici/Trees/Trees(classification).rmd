@@ -7,7 +7,7 @@ output: html_notebook
 library(readr)
 
 lagged <- FALSE
-cell_number <- 14
+cell_number <- 16
 
 F_PRED <- 60
 
@@ -66,11 +66,24 @@ cella <- cbind(cella, targets[y])
 cella[y] <- lapply(cella[y], factor)
 ```
 
+Check
+```{r}
+if(length(summary(cella[y])) == 1){
+  print("La variabile da predirre ha un solo livello, non è possibile fare il training")
+  stop()
+}
+```
+
+
+
+
 Type any R code in the chunk, for example:
 ```{r}
 cella <- as_tibble(cella)
 summary(cella) # assicuriamoci che vada tutto bene
 ```
+
+
 
 ```{r}
 library(Metrics)
@@ -184,7 +197,7 @@ errors
 library(randomForest)
 max_predictors <- ncol(cella_train) - 1
 bagging_model <- randomForest(formula = formula(form), data = cella_train, ntree = MAX_TREES, mtry = max_predictors)
-plot(model_bagging)
+plot(bagging_model)
 ```
 
 ```{r}
@@ -281,7 +294,7 @@ saveRDS(errors, file = paste0("Codice/Metodi_Statistici/saved_parameters/metrich
 ```
 
 ```{r}
-chosen_model <- which.max(errors$auc)
+chosen_model <- which.max(errors$accuracy)
 
 print(paste0("Chosen model: ",errors$name[chosen_model]))
 ```
@@ -302,5 +315,6 @@ final_test_error <- compute_metrics(
   test = unlist(cella[y], use.names = FALSE))
 ```
 ```{r}
+saveRDS(model, file = paste0("Codice/Metodi_Statistici/saved_models/",errors$name[chosen_model],"_cella_",cell_number))
 final_test_error
 ```

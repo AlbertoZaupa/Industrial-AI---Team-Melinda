@@ -7,35 +7,58 @@ output: html_notebook
 ```{r}
 library(readr)
 
-cell_file <- "Codice/Metodi_Statistici/lagged_datasets/Cella_15.csv"
-cell_number <- 18
+lagged <- FALSE
+cell_number <- 15
+
+F_PRED <- 60
+
+cell_file <- paste0("Codice/Metodi_Statistici/lagged_datasets/Cella_",cell_number,".csv")
 target_y <- readRDS("y.rds")
 
 #leggiamo il dataset della cella
 cella <- read_csv(cell_file)
+
 cella$Date <- NULL  # rimuove la prima colonna dato che ha l'orario
-spec(cella) # per vedere se ci sono problemi
+# cella$UmiditaRelativa
+
+cella[target_y] <- lapply(cella[target_y], factor) # se stiamo facendo classificazione (es: apertura della pompa) trasformiamo la y in fattore
+
+# da vedere se conviene convertire anche il resto
+if(lagged){
+  targets <- NULL
+  for(i in seq(from = 1, to = 60, by = 1)){
+    targets <- c(targets, paste0(target_y,"P",i))
+  }
+  cella[targets] <- lapply(cella[target_y], factor)
+  rm(targets)
+}
+
+
+# spec(cella) # per vedere se ci sono problemi
+
 ```
 
-Type any R code in the chunk, for example:
 ```{r}
 library(tidyverse)
-# fix colonne
-# cella$PompaGlicoleMarcia <- as.factor(cella$PompaGlicoleMarcia)
-# cella$Raffreddamento <- as.factor(cella$Raffreddamento)
-# cella$VentilatoreMarcia <- as.factor(cella$VentilatoreMarcia)
-
 # separa dataset
 targets <- cella %>% select(starts_with(paste0(target_y,"F")))
 cella <- cella %>% select(-starts_with(paste0(target_y,"F")))
+if(!lagged){
+  cella <- cella %>% select(-starts_with(paste0(target_y,"P")))
+}
+
+# fix colonne
+cella$PompaGlicoleMarcia <- factor(cella$PompaGlicoleMarcia)
+cella$Raffreddamento <- factor(cella$Raffreddamento)
+cella$VentilatoreMarcia <- factor(cella$VentilatoreMarcia)
 
 
-cella$TemperaturaMandataGlicoleNominale <- NULL
-# cella$TemperaturaMandataGlicole
-# cella$PompaGlicoleMarcia <- NULL
+y <- paste0(target_y,"F", F_PRED)
+
+cella <- cbind(cella, targets[y])
 
 
-# cella$VentilatoreMarcia <- NULL
+cella[y] <- lapply(cella[y], factor)
 ```
 
 ```{r}

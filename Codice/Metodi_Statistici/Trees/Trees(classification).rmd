@@ -7,7 +7,7 @@ output: html_notebook
 library(readr)
 
 lagged <- FALSE
-cell_number <- 16
+cell_number <- 13
 
 F_PRED <- 60
 
@@ -36,6 +36,8 @@ if(lagged){
     targets <- c(targets, paste0(target_y,"P",i))
   }
   cella[targets] <- lapply(cella[target_y], factor)
+} else {
+  cella <- cella %>% select(-matches(".*P..?$"))
 }
 rm(targets)
 
@@ -48,9 +50,9 @@ library(tidyverse)
 # separa dataset
 targets <- cella %>% select(starts_with(paste0(target_y,"F")))
 cella <- cella %>% select(-starts_with(paste0(target_y,"F")))
-if(!lagged){
-  cella <- cella %>% select(-starts_with(paste0(target_y,"P")))
-}
+# if(!lagged){
+#   cella <- cella %>% select(-starts_with(paste0(target_y,"P")))
+# }
 
 # fix colonne
 cella$PompaGlicoleMarcia <- factor(cella$PompaGlicoleMarcia)
@@ -167,7 +169,7 @@ plot(cv_train$size, cv_train$dev, type = "b", main = 'Cross-validation: first ba
 # print optimal size
 best_size <- cv_train$size[which.min(cv_train$dev)]
 paste('Optimal size:', best_size)
-saveRDS(best_size, file = paste0("Codice/Metodi_Statistici/saved_parameters/Trees/Pruned_Tree_best_size_cella_",cell_number))
+saveRDS(best_size, file = paste0("Codice/Metodi_Statistici/saved_parameters/Trees/Pruned_Tree_best_size_cella_",cell_number,".rds"))
 ```
 ```{r}
 pruned_model <- prune.tree(tree_model, best = best_size)
@@ -315,6 +317,6 @@ final_test_error <- compute_metrics(
   test = unlist(cella[y], use.names = FALSE))
 ```
 ```{r}
-saveRDS(model, file = paste0("Codice/Metodi_Statistici/saved_models/",errors$name[chosen_model],"_cella_",cell_number))
+saveRDS(model, file = paste0("Codice/Metodi_Statistici/saved_models/",errors$name[chosen_model],"_cella_",cell_number,".rds"))
 final_test_error
 ```

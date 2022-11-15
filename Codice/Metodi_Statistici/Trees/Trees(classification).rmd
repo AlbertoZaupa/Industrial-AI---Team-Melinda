@@ -1,0 +1,322 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r, results = 'hide'}
+library(readr)
+
+lagged <- FALSE
+cell_number <- 13
+
+F_PRED <- 60
+
+TEST_SIZE <- 0.2
+# TUNING_SIZE <- 0.8
+CONFIDENCE_TRESHOLD <- 50 / 100
+
+K_FOLDS <- 10
+MAX_TREES <- 500
+
+cell_file <- paste0("Codice/Metodi_Statistici/lagged_datasets/Cella_",cell_number,".csv")
+target_y <- readRDS("y.rds")
+
+#leggiamo il dataset della cella
+cella <- read_csv(cell_file)
+
+cella$Date <- NULL  # rimuove la prima colonna dato che ha l'orario
+# cella$UmiditaRelativa
+
+cella[target_y] <- lapply(cella[target_y], factor) # se stiamo facendo classificazione (es: apertura della pompa) trasformiamo la y in fattore
+
+# da vedere se conviene convertire anche il resto
+if(lagged){
+  targets <- NULL
+  for(i in seq(from = 1, to = 60, by = 1)){
+    targets <- c(targets, paste0(target_y,"P",i))
+  }
+  cella[targets] <- lapply(cella[target_y], factor)
+} else {
+  cella <- cella %>% select(-matches(".*P..?$"))
+}
+rm(targets)
+
+# spec(cella) # per vedere se ci sono problemi
+
+```
+
+```{r}
+library(tidyverse)
+# separa dataset
+targets <- cella %>% select(starts_with(paste0(target_y,"F")))
+cella <- cella %>% select(-starts_with(paste0(target_y,"F")))
+# if(!lagged){
+#   cella <- cella %>% select(-starts_with(paste0(target_y,"P")))
+# }
+
+# fix colonne
+cella$PompaGlicoleMarcia <- factor(cella$PompaGlicoleMarcia)
+cella$Raffreddamento <- factor(cella$Raffreddamento)
+cella$VentilatoreMarcia <- factor(cella$VentilatoreMarcia)
+
+
+y <- paste0(target_y,"F", F_PRED)
+
+cella <- cbind(cella, targets[y])
+
+
+cella[y] <- lapply(cella[y], factor)
+```
+
+Check
+```{r}
+if(length(summary(cella[y])) == 1){
+  print("La variabile da predirre ha un solo livello, non è possibile fare il training")
+  stop()
+}
+```
+
+
+
+
+Type any R code in the chunk, for example:
+```{r}
+cella <- as_tibble(cella)
+summary(cella) # assicuriamoci che vada tutto bene
+```
+
+
+
+```{r}
+library(Metrics)
+
+# suddivisione
+DATASET_SIZE <- nrow(cella)
+
+
+
+
+id_test <- as.integer(DATASET_SIZE * (1 - TEST_SIZE)):DATASET_SIZE
+
+cella_test <- cella[id_test,]
+old_cella_train <- cella[-id_test,]
+
+tmp <- old_cella_train[old_cella_train[y] == 1,]
+tmp2 <- old_cella_train[old_cella_train[y] != 1,]
+tmp_id <- sample(seq_len(nrow(tmp2)),nrow(tmp))
+cella_train <- rbind(tmp, tmp2[tmp_id,])
+
+rm(old_cella_train, tmp, tmp2, tmp_id)
+
+
+compute_metrics<- function(name = "random guess", preds = sample(0:1, 10,TRUE), test = sample(0:1, 10,TRUE)) {
+  error <- data.frame(name = name,
+                      auc = auc(actual = test, predicted = preds), # area under the curve
+                      accuracy = accuracy(actual = test, predicted = preds), # simple accuracy
+                      ce = ce(actual = test, predicted = preds), # classification error
+                      f1 = f1(actual = test, predicted = preds) # F1 score
+                      # precision = precision(actual = test, predicted = preds), # precision
+                      # recall = recall(actual = test, predicted = preds) # recall
+
+  )
+
+  return(error)
+}
+
+errors <- compute_metrics()
+models <- list(model=NULL)
+
+```
+
+
+
+
+# Simple Tree
+```{r}
+library(tree)
+
+
+form <- paste0(y," ~ .")
+tree_model <- tree(formula = form, data = cella_train)
+summary(tree_model)
+plot(tree_model)
+text(tree_model, pretty = 0)
+title(main = "Tree model for Pompa Glicole Marcia", sub = "Unpruned regression tree")
+```
+
+```{r}
+predictions <- predict(tree_model, cella_test)
+
+predictions <- unlist(ifelse(predictions > CONFIDENCE_TRESHOLD, 0, 1)[,1], use.names = FALSE)
+models <- append(models, list(model=tree_model))
+errors <- rbind(errors, compute_metrics(name = "Simple Tree", preds = predictions, test = unlist(cella_test[y], use.names = FALSE)))
+```
+
+
+```{r}
+print(errors)
+
+```
+
+## Pruning
+```{r}
+
+cv_train <- cv.tree(tree_model, , prune.tree)
+# 10 fold cv
+plot(cv_train$size, cv_train$dev, type = "b", main = 'Cross-validation: first batch result',
+     xlab = 'Tree size', ylab = 'Cross validation error')
+
+# print optimal size
+best_size <- cv_train$size[which.min(cv_train$dev)]
+paste('Optimal size:', best_size)
+saveRDS(best_size, file = paste0("Codice/Metodi_Statistici/saved_parameters/Trees/Pruned_Tree_best_size_cella_",cell_number,".rds"))
+```
+```{r}
+pruned_model <- prune.tree(tree_model, best = best_size)
+plot(pruned_model)
+text(pruned_model, pretty = 0)
+summary(pruned_model)
+```
+
+```{r}
+predictions <- predict(pruned_model, cella_test)
+predictions <- unlist(ifelse(predictions > CONFIDENCE_TRESHOLD, 0, 1)[,1], use.names = FALSE)
+models <- append(models, list(model=pruned_model))
+errors <- rbind(errors, compute_metrics(
+  name = paste0("Pruned Tree (best size: ", best_size),
+  preds = predictions,
+  test = unlist(cella_test[y], use.names = FALSE)))
+```
+
+```{r}
+errors
+```
+
+## Bagging
+
+```{r}
+# NB: Takes a lot
+library(randomForest)
+max_predictors <- ncol(cella_train) - 1
+bagging_model <- randomForest(formula = formula(form), data = cella_train, ntree = MAX_TREES, mtry = max_predictors)
+plot(bagging_model)
+```
+
+```{r}
+predictions <- predict(bagging_model, cella_test)
+models <- append(models, list(model=bagging_model))
+errors <- rbind(errors, compute_metrics(
+  name = paste0("Bagged Tree (N_trees: ", MAX_TREES),
+  preds = predictions,
+  test = unlist(cella_test[y], use.names = FALSE)))
+```
+
+```{r}
+errors
+```
+
+## Random forest
+
+```{r}
+# Ci mette troppo. Ci conviene usare il default
+# oob <- NULL
+#
+# for (m in seq_len(max_predictors - 1)) {
+#   rf_tmp <- randomForest(TemperaturaCelle ~ ., data = cella, mtry = m, ntree = MAX_TREES)
+#   oob <- c(oob, mean(rf_tmp$oob.times))
+# }
+#
+# minim <- which.min(oob)
+# saveRDS(minim, file = paste0("Codice/Metodi_Statistici/saved_parameters/Trees/rf_best_size_cella_", cell_number))
+```
+```{r}
+library(randomForest) # sqrt predittori
+rf_model <- randomForest(formula = formula(form), data = cella_train, ntree = MAX_TREES)
+plot(rf_model)
+varImpPlot(rf_model)
+```
+
+```{r}
+predictions <- predict(rf_model, cella_test)
+models <- append(models, list(model=rf_model))
+errors <- rbind(errors, compute_metrics(
+  name = paste0("Random Forest (N_trees: ", MAX_TREES),
+  preds = predictions,
+  test = unlist(cella_test[y], use.names = FALSE)))
+```
+
+```{r}
+errors
+```
+
+## Boosting
+```{r}
+library(caret)
+
+# reference: https://rpubs.com/mpfoley73/529130
+
+# re_encode variables
+boosting_model <- train(formula(form),
+                        data = cella_train,
+                        method = "gbm",  # for bagged tree
+                        tuneLength = 5,  # choose up to 5 combinations of tuning parameters
+                        trControl = trainControl(
+                          method = "cv",  # k-fold cross validation
+                          number = K_FOLDS,  # 10 folds
+                          savePredictions = "final"      # save predictions for the optimal tuning parameter1
+                        )
+)
+# caret tunes:
+#    n.trees: number of boosting iterations
+#    interaction.depth: maximum tree depth
+#    shrinkage: shrinkage
+#   n.minobsinnode: mimimum terminal node size
+
+```
+```{r}
+plot(boosting_model)
+```
+
+```{r}
+predictions <- predict(boosting_model, cella_test)
+models <- append(models, list(model=boosting_model))
+errors <- rbind(errors, compute_metrics(
+  name = paste0("Boosted Trees"),
+  preds = predictions,
+  test = unlist(cella_test[y], use.names = FALSE)))
+```
+
+```{r}
+errors
+```
+
+
+```{r}
+saveRDS(errors, file = paste0("Codice/Metodi_Statistici/saved_parameters/metriche_errori/Alberi_cella_",cell_number,".rds"))
+```
+
+```{r}
+chosen_model <- which.max(errors$accuracy)
+
+print(paste0("Chosen model: ",errors$name[chosen_model]))
+```
+
+```{r}
+model <- models[chosen_model]$model
+predictions <- predict(model, cella)
+if(length(ncol(predictions)) != 0){
+  predictions <- unlist(ifelse(predictions > CONFIDENCE_TRESHOLD, 0, 1)[,1], use.names = FALSE)
+} else {
+  predictions <- unlist(predictions, use.names = FALSE)
+}
+
+
+final_test_error <- compute_metrics(
+  name = errors$name[chosen_model],
+  preds = predictions,
+  test = unlist(cella[y], use.names = FALSE))
+```
+```{r}
+saveRDS(model, file = paste0("Codice/Metodi_Statistici/saved_models/",errors$name[chosen_model],"_cella_",cell_number,".rds"))
+final_test_error
+```

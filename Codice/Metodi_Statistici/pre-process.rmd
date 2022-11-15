@@ -9,7 +9,9 @@ lagged <- TRUE
 lag <- 60
 data_dir <- "CSV/october"
 write_dir <- "Codice/Metodi_Statistici/lagged_datasets/"
-y <- "TemperaturaRitornoGlicole"
+# y <- "TemperaturaRitornoGlicole"
+ y <- "PompaGlicoleMarcia"
+# y <- "PercentualeAperturaValvolaMiscelatrice"
 saveRDS(y , file = "y.rds")
 resolution_step <- 15
 max_resolution <- 180
@@ -18,18 +20,15 @@ REMOVE_NA <- TRUE
 
 preprocess <- function(cella, remove = TRUE) {
   if (remove) {
-   # cella$PercentualeVelocitaVentilatori[cella$PercentualeVelocitaVentilatori > 100 |
-   #                                        cella$PercentualeVelocitaVentilatori < 0] <- NA
+   cella$PercentualeVelocitaVentilatori[cella$PercentualeVelocitaVentilatori > 100 |
+                                         cella$PercentualeVelocitaVentilatori < 0] <- NA
 
     cella$PercentualeAperturaValvolaMiscelatrice[cella$PercentualeAperturaValvolaMiscelatrice > 100 |
                                                    cella$PercentualeAperturaValvolaMiscelatrice < 0] <- NA
 
-   # cella$PompaGlicoleMarcia[cella$PompaGlicoleMarcia > 1 |
-   #                            cella$PompaGlicoleMarcia < 0] <- NA
-   # cella$Raffreddamento[cella$Raffreddamento > 1 |
-   #                        cella$Raffreddamento < 0] <- NA
-   # cella$VentilatoreMarcia[cella$VentilatoreMarcia > 1 |
-   #                           cella$VentilatoreMarcia < 0] <- NA
+   cella$PompaGlicoleMarcia[cella$PompaGlicoleMarcia > 1] <- 1
+   cella$Raffreddamento[cella$Raffreddamento > 1 | cella$Raffreddamento < 0] <- NA
+   cella$VentilatoreMarcia[cella$VentilatoreMarcia > 1 | cella$VentilatoreMarcia < 0] <- NA
 
     cella <- drop_na(cella)
 
@@ -50,10 +49,10 @@ for (file in files) {
 
   if(lagged){
     for (i in 1:lag) {
-    df[, paste0(y,"P", i) := shift(df$TemperaturaCelle, i, type = "lag")]
+    df[, paste0(y,"P", i) := shift(select(df, y), i, type = "lag")]
   }
     for (i in seq(from = resolution_step, to = max_resolution, by = resolution_step)) {
-    df[, paste0(y,"F", i) := shift(df$TemperaturaCelle, i, type = "lead")]
+    df[, paste0(y,"F", i) := shift(select(df, y), i, type = "lead")]
   }
   }
 

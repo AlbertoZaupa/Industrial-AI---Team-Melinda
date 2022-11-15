@@ -1,0 +1,153 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+
+```{r}
+library(readr)
+
+lagged <- FALSE
+cell_number <- 15
+
+F_PRED <- 60
+
+cell_file <- paste0("Codice/Metodi_Statistici/lagged_datasets/Cella_",cell_number,".csv")
+target_y <- readRDS("y.rds")
+
+#leggiamo il dataset della cella
+cella <- read_csv(cell_file)
+
+cella$Date <- NULL  # rimuove la prima colonna dato che ha l'orario
+# cella$UmiditaRelativa
+
+cella[target_y] <- lapply(cella[target_y], factor) # se stiamo facendo classificazione (es: apertura della pompa) trasformiamo la y in fattore
+
+# da vedere se conviene convertire anche il resto
+if(lagged){
+  targets <- NULL
+  for(i in seq(from = 1, to = 60, by = 1)){
+    targets <- c(targets, paste0(target_y,"P",i))
+  }
+  cella[targets] <- lapply(cella[target_y], factor)
+  rm(targets)
+}
+
+
+# spec(cella) # per vedere se ci sono problemi
+
+```
+
+```{r}
+library(tidyverse)
+# separa dataset
+targets <- cella %>% select(starts_with(paste0(target_y,"F")))
+cella <- cella %>% select(-starts_with(paste0(target_y,"F")))
+if(!lagged){
+  cella <- cella %>% select(-starts_with(paste0(target_y,"P")))
+}
+
+# fix colonne
+cella$PompaGlicoleMarcia <- factor(cella$PompaGlicoleMarcia)
+cella$Raffreddamento <- factor(cella$Raffreddamento)
+cella$VentilatoreMarcia <- factor(cella$VentilatoreMarcia)
+
+
+y <- paste0(target_y,"F", F_PRED)
+
+cella <- cbind(cella, targets[y])
+
+
+cella[y] <- lapply(cella[y], factor)
+```
+
+```{r}
+cella <- as_tibble(cella)
+summary(cella) # assicuriamoci che vada tutto# bene
+```
+```{r}
+library(Metrics)
+
+# suddivisione
+DATASET_SIZE <- nrow(cella)
+
+TEST_SIZE <- 0.2
+# TUNING_SIZE <- 0.8
+
+# K_FOLDS <- 10
+
+
+id_test <- as.integer(DATASET_SIZE * (1 - TEST_SIZE)):DATASET_SIZE
+
+cella_test <- cella[id_test,]
+cella_train <- cella[-id_test,]
+
+
+
+#                   shuffle
+# partitions <- split(sample(seq_len(nrow(cella))), cut_number(seq_len(nrow(cella)), K_FOLDS, labels = FALSE))
+
+
+
+# createDFs <- function(df, partitions, partition_number = 1) {
+#   # partizione indicata
+#   valid <- df[unlist(partitions[partition_number]),]
+#   # tutte le partizioni tranne quella indicata
+#   tr <- df[-unlist(partitions[partition_number]),]
+#   return(list(training = tr, validation = valid))
+# }
+
+compute_metrics <- function(name = "dummy", preds = sample(seq(from = 0, to = 4, by = 0.5), replace = TRUE),
+                            test = sample(seq(from = 0, to = 4, by = 0.5), replace = TRUE)) {
+  error <- data.frame(name = name,
+                      mse = mse(actual = test, predicted = preds), # mean square error
+                      rmse = rmse(actual = test, predicted = preds), # root mean square error
+                      rmsle = rmsle(actual = test, predicted = preds), # root mean square log error
+                      rrse = rrse(actual = test, predicted = preds), # root relative square error
+                      rse = rse(actual = test, predicted = preds), # relative square error
+                      bias = bias(actual = test, predicted = preds), # bias del modello
+                      pbias = percent_bias(actual = test, predicted = preds), # percent bias
+                      mae = mae(actual = test, predicted = preds), # Mean Absolute Error
+                      rae = rae(actual = test, predicted = preds), # relative absolute error
+                      mape = mape(actual = test, predicted = preds), # Mean Absolute Percentage Error
+                      mdae = mdae(actual = test, predicted = preds), # Median Absolute Different Error
+                      msle = msle(actual = test, predicted = preds), # Mean Squared Log Error
+                      smape = smape(actual = test, predicted = preds), #symmetric mean absolute percentage error
+                      sse = sse(actual = test, predicted = preds), # sum of the squared differences between two numeric vectors
+                      r2 = cor(test, preds)^2
+  )
+
+  return(error)
+}
+
+library(stringr)
+create_formula <- function (y="y", useful_factors="."){
+  result <- paste(y, "~ ")
+  for(factor in useful_factors){
+    result <- paste(result, factor, "+")
+  }
+
+  result <-  substring(result, first=1, str_length(result) -1)
+  return(result)
+}
+
+errors <- compute_metrics()
+```
+```{r}
+y <- paste0(target_y,"F60")
+y_test <- targets[id_test,4]
+y_train <- targets[-id_test,4]
+
+x_test <- cella[id_test,]
+x_train <- cella[-id_test,]
+```
+# MMC
+```{r}
+# gia qui ci mette troppo
+library(e1071)
+model <- svm(x_train,y_train, type = "eps-regression", kernel = "linear", cost = 1e100)
+```
+```{r}
+predictions <- predict(model, y_test)
+```
+

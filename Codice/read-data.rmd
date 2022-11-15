@@ -11,9 +11,22 @@ month_data <- list()
 pattern <- "*.csv$" # pattern: termina con .csv
 # polish data
 for (file in list.files(path = "./Dati originali", pattern = pattern, full.names = TRUE)) {
-  month_data <- append(month_data, list(read_delim(file = file, delim = ";")))
+  month_data <- append(month_data, list(read_csv2(file = file)))
 }
 ```
+
+# Glance
+
+```{r}
+df <- month_data[[1]]
+summary(df)
+rm(df)
+
+# problemi:
+# PompaGlicoleMarcia della cella 16 e' sempre 0. Anche VentilatoreMarcia
+# da cles atuenetto sono quasi solo NA
+```
+
 # Suddividere
 
 ```{r}
@@ -21,29 +34,41 @@ library(tidyverse)
 # NB: questa versione dello script divide direttamente per celle, senza tenere conto dell'ipogeo
 # è stato fatto per velocizzare, se necessario verrà caricato l'altro script
 TENTATIVI <- 100 # non sappiamo esattamente quante celle ci sono
-celle <- unlist(list(rep(list(0),100)), recursive = FALSE)
+celle <- unlist(list(rep(list(0), 100)), recursive = FALSE)
 for (composite_csv in month_data) {
   composite_csv <- as_tibble(composite_csv)
   # rimuove l'ultima colonna perchè sono solo NA
-  composite_csv <- composite_csv[,-ncol(composite_csv)]
+  composite_csv <- composite_csv[, -ncol(composite_csv)]
   # le colonne Tuenetto, tassullo, denno e cles sono piene di NA pure loro
-  composite_csv <- composite_csv[,-((ncol(composite_csv) - 4):ncol(composite_csv))]
+  composite_csv <- composite_csv[, -((ncol(composite_csv) - 3):ncol(composite_csv))]
   # rinomina le colonne (toglie ipogeo)
   pattern <- "Ipogeo.*_C"
-  names(composite_csv) <- gsub(pattern = "Ipogeo.*_C", replacement = "C", x = names(composite_csv))
+  names(composite_csv) <- gsub(pattern = "Ipogeo.*_", replacement = "", x = names(composite_csv))
+
+  # seleziona i predittori comuni a tutte le celle
+  pattern <- paste0("Cella")
+  common_predictors <- composite_csv %>% select(-matches(pattern)) # dataframe con solo le colonne della cella
   for (i in 1:TENTATIVI) {
     # seleziona le colonne della cella i
     # lista per le celle
     pattern <- paste0("Cella", i, "[A-Z]")
-    data <- composite_csv %>% select(Date, matches(pattern)) # dataframe con solo le colonne della cella
-    if (ncol(data) == 1) { # se sono finite le celle, quindi c'è solo la data
-      next # le celle non sono in ordine
+    data <- composite_csv %>% select(matches(pattern)) # dataframe con solo le colonne della cella
+    if (ncol(data) == 0) { # se sono finite le celle, quindi c'è solo la data
+      next # la cella numer i non esiste
     } else {
-     # rimuove "Cellan" dai nomi
-    pattern <- paste0("Cella", i)
-    names(data) <- gsub(pattern = pattern, replacement = "", x = names(data))
-    celle[i] <- list(data)
-    # esempio data: tutte le variabili che iniziano con "Ipogeo2"
+      # rimuove "Cellan" dai nomi
+      pattern <- paste0("Cella", i)
+      names(data) <- gsub(pattern = pattern, replacement = "", x = names(data))
+      data <- cbind(common_predictors, data)
+
+      df <- as.data.frame(celle[i])
+      if (length(df) == 1) {
+        df <- data
+      } else {
+        df <- rbind(df, data)
+      }
+      celle[i] <- list(df)
+      # esempio data: tutte le variabili che iniziano con "Ipogeo2"
     }
   }
 }
@@ -56,7 +81,7 @@ Convertire in csv
 rm(data, file, month_data, pattern)
 #
 path <- paste0("CSV/", month_name)
-if(!dir.exists(path))
+if (!dir.exists(path))
 {
   dir.create(path = path)
 } else {
@@ -67,24 +92,24 @@ i <- 1
 app <- FALSE
 
 for (cella in celle) {
-  if(typeof(cella) == "double"){
+  if (typeof(cella) == "double") {
     i <- i + 1
     next
   } else {
     cella <- as.data.frame(cella)
-     # fixa le celle con problemi
-    cella$TemperaturaCelle <- gsub(pattern = ',',replacement = '.',fixed = TRUE,x=cella$TemperaturaCelle)
+    # fixa le celle con problemi
+    cella$TemperaturaCelle <- gsub(pattern = ',', replacement = '.', fixed = TRUE, x = cella$TemperaturaCelle)
     cella$TemperaturaCelle <- as.numeric(cella$TemperaturaCelle)
-    cella$TemperaturaMandataGlicole <- gsub(pattern = ',',replacement = '.',fixed = TRUE,x=cella$TemperaturaMandataGlicole)
+    cella$TemperaturaMandataGlicole <- gsub(pattern = ',', replacement = '.', fixed = TRUE, x = cella$TemperaturaMandataGlicole)
     cella$TemperaturaMandataGlicole <- as.numeric(cella$TemperaturaMandataGlicole)
-    cella$TemperaturaRitornoGlicole <- gsub(pattern = ',',replacement = '.',fixed = TRUE,x=cella$TemperaturaRitornoGlicole)
+    cella$TemperaturaRitornoGlicole <- gsub(pattern = ',', replacement = '.', fixed = TRUE, x = cella$TemperaturaRitornoGlicole)
     cella$TemperaturaRitornoGlicole <- as.numeric(cella$TemperaturaRitornoGlicole)
 
     # lento, ma write_csv non funziona correttamente
     filename <- paste0(path, "/Cella_", i, ".csv")
-    write.table(x = cella, file = filename, append = app, col.names = TRUE, row.names = FALSE, sep=",")
+    write.table(x = cella, file = filename, append = app, col.names = TRUE, row.names = FALSE, sep = ",")
     i <- i + 1
-    if(!app){
+    if (!app) {
       app <- TRUE
     }
   }

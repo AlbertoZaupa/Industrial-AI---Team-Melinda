@@ -1,13 +1,13 @@
 import pandas as pd
 import matplotlib.pyplot as plt
-import tensorflow as tf
-from .reward_func import RewardFunction
-from .apple_cell import AppleCellEnvironment
-from .actor_critic import *
-from .buffer import Buffer
-from .policy import *
+from reward_func import RewardFunction
+from apple_cell import AppleCellEnvironment
+from actor_critic import *
+from buffer import Buffer
+from policy import *
 
-CSV_PATH = "..." # Inserire il path del dataset
+CSV_PATH = "..."  # Inserire il path del dataset
+MODEL_PATH = "..."  # Inserire il path del modello per la simulazione
 PAST_WINDOW = 6*60
 NUM_STATES = 2
 NUM_ACTIONS = 1
@@ -64,7 +64,7 @@ reward_function = RewardFunction(target_cell_temp=TARGET_CELL_TEMP,
      min_cell_temp=MIN_CELL_TEMP, max_cell_temp=MAX_CELL_TEMP, 
      min_glycol_temp=MIN_GLYCOL_TEMP, max_glycol_temp=MAX_GLYCOL_TEMP)
 
-env = AppleCellEnvironment("modelli/ED_temp_cella_1min.model", reward_function)
+env = AppleCellEnvironment(MODEL_PATH, reward_function, DF, PAST_WINDOW)
 
 
 # INIZIA LA FASE DI ALLENAMENTO
@@ -73,11 +73,11 @@ avg_reward_list = []
 # L'agente inizialmente colleziona un po' di esperienza, compiendo azioni casuali
 curr_state = env.reset()
 for i in range(10 * batch_size):
-  tf_curr_state = tf.expand_dims(tf.convert_to_tensor(curr_state, np.float32), 0)
-  action = random_policy(tf_curr_state, MIN_GLYCOL_TEMP, MAX_GLYCOL_TEMP)
-  cell_temp, reward, _, __ = env.step(action)
-  buffer.record((curr_state, action, reward, cell_temp))
-  curr_state = env.update_state(cell_temp, action)
+    tf_curr_state = tf.expand_dims(tf.convert_to_tensor(curr_state, np.float32), 0)
+    action = random_policy(MIN_GLYCOL_TEMP, MAX_GLYCOL_TEMP, NUM_ACTIONS)
+    cell_temp, reward, _, __ = env.step(action)
+    buffer.record((curr_state, action, reward, cell_temp))
+    curr_state = env.update_state(cell_temp, action)
 
 # Fase di allenamento
 for ep in range(total_episodes):
@@ -85,21 +85,24 @@ for ep in range(total_episodes):
     episodic_reward = 0
 
     for i in range(episode_steps):
-      tf_curr_state = tf.expand_dims(tf.convert_to_tensor(curr_state, np.float32), 0)
-      action = training_policy(tf_curr_state, actor_model, MIN_GLYCOL_TEMP, MAX_GLYCOL_TEMP)
-      # L'ambiente viene modificato applicando l'azione scelta dalla rete, che modifica
-      # la temperatura all'interno della cella
-      cell_temp, reward, _, __ = env.step(action)
+        tf_curr_state = tf.expand_dims(tf.convert_to_tensor(curr_state, np.float32), 0)
+        action = training_policy(tf_curr_state, actor_model, MIN_GLYCOL_TEMP, MAX_GLYCOL_TEMP, NUM_ACTIONS)
+        # L'ambiente viene modificato applicando l'azione scelta dalla rete, che cambia
+        # la temperatura all'interno della cella
+        cell_temp, reward, _, __ = env.step(action)
 
-      # Viene salvata la tupla (stato corrente, azione scelta, ricompensa, temperatura della cella)
-      buffer.record((curr_state, action, reward, cell_temp))
-      episodic_reward += reward
-      curr_state = env.update_state(cell_temp, action)
+        # Viene salvata la tupla (stato corrente, azione scelta, ricompensa, temperatura della cella)
+        buffer.record((curr_state, action, reward, cell_temp))
+        episodic_reward += reward
+        curr_state = env.update_state(cell_temp, action)
 
-      # Vengono aggiornati i pesi delle reti
-      learn(buffer, batch_size)
-      # update_target(target_actor.variables, actor_model.variables, tau)
-      update_target(target_critic.variables, critic_model.variables, tau)
+        # Vengono aggiornati i pesi delle reti principali (actor_model, critic_model)
+        learn(buffer, batch_size, target_actor, target_critic, critic_model,
+              actor_model, critic_optimizer, actor_optimizer, gamma)
+
+        # Vengono aggiornati i pesi delle reti `target` (target_actor, target_critic)
+        update_target(target_actor.variables, actor_model.variables, tau)
+        update_target(target_critic.variables, critic_model.variables, tau)
       
     plt.plot(env.state[:, :1], color="orange")
     plt.plot(env.state[:, 1:], color="blue")

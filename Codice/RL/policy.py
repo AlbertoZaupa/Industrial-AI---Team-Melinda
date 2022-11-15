@@ -1,7 +1,9 @@
 import numpy as np
+import tensorflow as tf
+
 
 # Utilizzata durante la fase di allenamento 
-def training_policy(state, actor_model, lower_bound, upper_bound):
+def training_policy(state, actor_model, lower_bound, upper_bound, num_actions):
     assert upper_bound > lower_bound
 
     action = actor_model.predict(state, verbose=0)
@@ -15,15 +17,15 @@ def training_policy(state, actor_model, lower_bound, upper_bound):
     # la temperatura scelta deve sempre stare tra MIN_GLYCOL_TEMP e MAX_GLYCOL_TEMP
     legal_action = np.clip(sampled_action, lower_bound, upper_bound)
 
-    return np.squeeze(legal_action).reshape((NUM_ACTIONS, 1))
+    return np.squeeze(legal_action).reshape((num_actions, 1))
 
 
 # Utilizzata nella fase di esplorazione iniziale
-def random_policy(state, lower_bound, upper_bound):
-  action = np.random.uniform(lower_bound, upper_bound, size=1)
-  return np.squeeze(action).reshape((NUM_ACTIONS, 1))
+def random_policy(lower_bound, upper_bound, num_actions):
+    action = np.random.uniform(lower_bound, upper_bound, size=1)
+    return np.squeeze(action).reshape((num_actions, 1))
 
 
 # Utilizzata al termine dell'allenamento
 def final_policy(state, actor_model):
-  return tf.squeeze(actor_model.predict(state, verbose=0))
+    return tf.squeeze(actor_model.predict(state, verbose=0))

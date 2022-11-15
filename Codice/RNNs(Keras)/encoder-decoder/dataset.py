@@ -1,14 +1,13 @@
 import tensorflow as tf
-import pandas as pd
+
 
 def prepare_dataset(df, n_input_features, past_window_size, forecast_size, batch_size, shuffle=False):
     """
-        df: dataframe di input
-        n_input_features: il numero di feature che rappresentano l'input al sistema (TemperaturaMandataGlicole)
-        past_window_size: il numero di minuti per cui si guarda nel passato
-        forecast_size: il numero di minuti per cui si prevede nel futuro
-        batch_size: dimensione di una batch durante la fase di training
-        shuffle: opzione per mescolare l'ordine delle batch durante il training
+      df: dataframe di input
+      n_input_features: il numero di feature che rappresentano l'input al sistema (TemperaturaMandataGlicole)
+      past_window_size: il numero di minuti per cui si guarda nel passato
+      forecast_size: il numero di minuti per cui si prevede nel futuro
+      batch_size: dimensione di una batch durante la fase di training
     """
 
     total_size = past_window_size + forecast_size
@@ -30,7 +29,7 @@ def prepare_dataset(df, n_input_features, past_window_size, forecast_size, batch
     # nei <forecast_size> minuti successivi
 
     data = data.map(lambda k: ((k[:-forecast_size],
-                                tf.transpose(k[-forecast_size:,-n_input_features:])),
-                                k[-1:,0]))
-    
+                                tf.transpose(k[-forecast_size:, -n_input_features:])),
+                               k[-1:, 0]))
+
     return data.batch(batch_size).prefetch(tf.data.experimental.AUTOTUNE)

@@ -1,5 +1,7 @@
 import numpy as np
 
+
+# Buffer circolare utilizzato per conservare le esperienze passate dell'agente
 class Buffer:
     def __init__(self, past_window, num_states, num_actions, capacity=100000):
         self.capacity = capacity

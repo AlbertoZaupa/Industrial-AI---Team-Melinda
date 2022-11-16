@@ -1,7 +1,7 @@
 import tensorflow as tf
 
 
-def prepare_dataset_classification(df1, df2, past_window_size, forecast_window_size, n_input_features,
+def prepare_dataset_classification(df1, df2, n_input_features, past_window_size, forecast_window_size,
                                    batch_size, vectorized_labels=False):
     """
         df1: dataframe di input, tranne la variabile da classificare
@@ -21,7 +21,8 @@ def prepare_dataset_classification(df1, df2, past_window_size, forecast_window_s
     data = data.window(total_size, shift=1, drop_remainder=True)
     data = data.flat_map(lambda k: k.batch(total_size))
 
-    return split_inputs_and_outputs(data, forecast_window_size, n_input_features, batch_size, vectorized_labels)
+    return split_inputs_and_outputs(data, forecast_window_size, n_input_features, batch_size, vectorized_labels,
+                                    regression=False)
 
 
 def prepare_dataset_regression(df, n_input_features, past_window_size, forecast_window_size, batch_size,
@@ -44,7 +45,8 @@ def prepare_dataset_regression(df, n_input_features, past_window_size, forecast_
     return split_inputs_and_outputs(data, forecast_window_size, n_input_features, batch_size, vectorized_labels)
 
 
-def split_inputs_and_outputs(dataset, forecast_window_size, n_input_features, batch_size, vectorized_labels=False):
+def split_inputs_and_outputs(dataset, forecast_window_size, n_input_features, batch_size, vectorized_labels=False,
+                             regression=True):
     # Per la feature che cerchiamo di predirre, possiamo scegliere di ottenere come
     # label il vettore di valori futuri dal momento corrente
     # al termine di <forecast_size>, oppure solo l'ultimo elemento del vettore.
@@ -57,6 +59,12 @@ def split_inputs_and_outputs(dataset, forecast_window_size, n_input_features, ba
         else:
             return tf.transpose(k[-forecast_window_size:, -n_input_features:])
 
+    def labels_lambda(k):
+        if regression:
+            return k[-labels_range:, 0]
+        else:
+            return tf.reshape(k[-labels_range:, :2], shape=(labels_range, 2))
+
     # k[:-forecast_size] è la matrice che contiene il valore delle variabili di stato
     # e delle variabili di input nei <past_window_size> minuti precedenti
     #
@@ -68,6 +76,6 @@ def split_inputs_and_outputs(dataset, forecast_window_size, n_input_features, ba
 
     dataset = dataset.map(lambda k: ((k[:-forecast_window_size],
                                       future_inputs_lambda(k)),
-                                     k[-labels_range:, 0]))
+                                     labels_lambda(k)))
 
     return dataset.batch(batch_size).prefetch(tf.data.experimental.AUTOTUNE)

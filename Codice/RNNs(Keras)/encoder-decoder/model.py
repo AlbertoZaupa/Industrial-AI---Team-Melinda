@@ -26,7 +26,8 @@ def encoder_decoder_arch(past_window_len, n_state_features, future_window_len, n
     x = tf.keras.layers.Dense(32, activation='relu')(decoder_lstm)
     x = tf.keras.layers.Dense(16, activation='relu')(x)
     finalize_model = finalize_model_regression if regression else finalize_model_classification
-    return finalize_model(past_inputs, future_inputs, x)
+    model = finalize_model(past_inputs, future_inputs, x)
+    return model
 
 
 def finalize_model_regression(past_inputs, future_inputs, second_to_last_layer):
@@ -35,7 +36,6 @@ def finalize_model_regression(past_inputs, future_inputs, second_to_last_layer):
     # Il modello viene compilato
     model = tf.keras.models.Model(inputs=[past_inputs, future_inputs], outputs=output)
     model.compile(loss='mse', optimizer='adam', metrics=["mse"])
-
     return model
 
 

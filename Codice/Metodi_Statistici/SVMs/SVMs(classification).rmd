@@ -21,7 +21,7 @@ cella <- read_csv(cell_file)
 cella$Date <- NULL  # rimuove la prima colonna dato che ha l'orario
 # cella$UmiditaRelativa
 
-cella[target_y] <- lapply(cella[target_y], factor) # se stiamo facendo classificazione (es: apertura della pompa) trasformiamo la y in fattore
+# cella[target_y] <- lapply(cella[target_y], factor) # se stiamo facendo classificazione (es: apertura della pompa) trasformiamo la y in fattore
 
 # da vedere se conviene convertire anche il resto
 if(lagged){
@@ -48,17 +48,17 @@ if(!lagged){
 }
 
 # fix colonne
-cella$PompaGlicoleMarcia <- factor(cella$PompaGlicoleMarcia)
-cella$Raffreddamento <- factor(cella$Raffreddamento)
-cella$VentilatoreMarcia <- factor(cella$VentilatoreMarcia)
+# cella$PompaGlicoleMarcia <- factor(cella$PompaGlicoleMarcia)
+# cella$Raffreddamento <- factor(cella$Raffreddamento)
+# cella$VentilatoreMarcia <- factor(cella$VentilatoreMarcia)
 
 
 y <- paste0(target_y,"F", F_PRED)
 
-cella <- cbind(cella, targets[y])
+# cella <- cbind(cella, targets[y])
 
 
-cella[y] <- lapply(cella[y], factor)
+# cella[y] <- lapply(cella[y], factor)
 ```
 
 ```{r}
@@ -140,6 +140,8 @@ y_train <- targets[-id_test,4]
 
 x_test <- cella[id_test,]
 x_train <- cella[-id_test,]
+
+
 ```
 # MMC
 ```{r}
@@ -150,4 +152,6 @@ model <- svm(x_train,y_train, type = "eps-regression", kernel = "linear", cost =
 ```{r}
 predictions <- predict(model, y_test)
 ```
-
+```{r}
+errors <- compute_metrics(name="MMC", y_test, predictions)
+```

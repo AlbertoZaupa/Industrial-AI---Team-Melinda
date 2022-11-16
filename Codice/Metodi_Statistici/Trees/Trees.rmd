@@ -8,6 +8,7 @@ library(readr)
 
 lagged <- FALSE
 cell_number <- 18
+future_pr <- FALSE
 
 
 cell_file <- paste0("Codice/Metodi_Statistici/lagged_datasets/Cella_",cell_number,".csv")
@@ -21,9 +22,13 @@ spec(cella) # per vedere se ci sono problemi
 ```
 
 ```{r}
+library(tidyverse)
 # separa dataset
+if(future_pr){
 targets <- cella %>% select(starts_with(paste0(target_y,"F")))
+}
 cella <- cella %>% select(-starts_with(paste0(target_y,"F")))
+
 if(!lagged){
   cella <- cella %>% select(-starts_with(paste0(target_y,"P")))
 }
@@ -110,7 +115,7 @@ compute_metrics_regression <- function(name = "dummy", preds = c(2, 1, 3, 8, 8, 
   return(error)
 }
 
-errors <- compute_metrics(preds = sample(0:100, size=100, replace = T), test = sample(0:100, size=100, replace = T))
+errors <- compute_metrics_regression(preds = sample(0:100, size=100, replace = T), test = sample(0:100, size=100, replace = T))
 create_plot_predictions <- function (predictions, test_y, true_color, predicted_color, y_name="Percentuale Apertura Valvola Miscelatrice", ylim_inf=0, ylim_sup=100){
   x <- seq_along(predictions)
   df <- data.frame(x,Predetta=predictions,Veri=test_y)
@@ -133,10 +138,21 @@ ylab("Temperatura") + ylim(ylim_inf, ylim_sup)
 # Simple Tree
 ```{r}
 library(tree)
-y <- paste0(target_y,"F60")
+if(future_pr){
+  y <- paste0(target_y,"F15")
+} else {
+  y <- target_y
+}
+#
 
-train_dataset <- cbind(cella_train, targets[-id_test,4])
+if(future_pr){
+  train_dataset <- cbind(cella_train, targets[-id_test,4])
 test_dataset <- cbind(cella_test, targets[id_test,4])
+} else {
+  train_dataset <- cella_train
+test_dataset <- cella_test
+}
+
 form <- paste0(y," ~ .")
 model <- tree(formula = form, data = train_dataset)
 summary(model)
@@ -147,7 +163,7 @@ title(main = "Tree model for cell Temperature", sub = "Unpruned regression tree"
 
 ```{r}
 predictions <- predict(model, test_dataset)
-errors <- rbind(compute_metrics(name = "Simple Tree", preds = predictions, test = unlist(test_dataset[y], use.names = FALSE)))
+errors <- rbind(compute_metrics_regression(name = "Simple Tree", preds = predictions, test = unlist(test_dataset[y], use.names = FALSE)))
 ```
 
 
@@ -181,7 +197,7 @@ summary(model_pruned)
 
 ```{r}
 predictions <- predict(model_pruned, cella_test)
-errors <- rbind(errors, compute_metrics(
+errors <- rbind(errors, compute_metrics_regression(
   name = paste0("Pruned Tree (best size: ", best_size),
   preds = predictions,
   test = unlist(test_dataset[y], use.names = FALSE)))
@@ -203,7 +219,7 @@ plot(model_bagging)
 
 ```{r}
 predictions <- predict(model_bagging, test_dataset)
-errors <- rbind(errors, compute_metrics(
+errors <- rbind(errors, compute_metrics_regression(
   name = paste0("Bagged Tree (N_trees: ", MAX_TREES),
   preds = predictions,
   test = unlist(test_dataset[y], use.names = FALSE)))
@@ -236,7 +252,7 @@ varImpPlot(model_rf)
 
 ```{r}
 predictions <- predict(model_rf, test_dataset)
-errors <- rbind(errors, compute_metrics(
+errors <- rbind(errors, compute_metrics_regression(
   name = paste0("Random Forest (N_trees: ", MAX_TREES),
   preds = predictions,
   test = unlist(test_dataset[y], use.names = FALSE)))
@@ -244,6 +260,13 @@ errors <- rbind(errors, compute_metrics(
 
 ```{r}
 create_plot_predictions(predictions, unlist(test_dataset[y]), true_color = "black", predicted_color = "orange" )
+```
+
+
+```{r}
+# library(plotly)
+# plot_ly(x=cella$PompaGlicoleMarcia, y=cella$Raffreddamento, z=cella$TemperaturaMandataGlicoleNominale, type="scatter3d", mode="markers",
+#         color=~as.character(cella$PercentualeAperturaValvolaMiscelatrice))
 ```
 
 ## Boosting

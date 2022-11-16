@@ -10,8 +10,8 @@ lag <- 60
 data_dir <- "CSV/october"
 write_dir <- "Codice/Metodi_Statistici/lagged_datasets/"
 # y <- "TemperaturaRitornoGlicole"
- y <- "PompaGlicoleMarcia"
-# y <- "PercentualeAperturaValvolaMiscelatrice"
+# y <- "PompaGlicoleMarcia"
+y <- "PercentualeAperturaValvolaMiscelatrice"
 saveRDS(y , file = "y.rds")
 resolution_step <- 15
 max_resolution <- 180

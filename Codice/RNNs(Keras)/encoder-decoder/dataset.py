@@ -1,11 +1,13 @@
+import pandas as pd
 import tensorflow as tf
+import numpy as np
 
 
-def prepare_dataset_classification(df1, df2, n_input_features, past_window_size, forecast_window_size,
+def prepare_dataset_classification(A1, A2, n_input_features, past_window_size, forecast_window_size,
                                    batch_size, vectorized_labels=False):
     """
-        df1: dataframe di input, tranne la variabile da classificare
-        df2: dataframe contenente solo la variabile da classificare
+        A1: dataframe/nd-array di input, tranne la variabile da classificare
+        A2: dataframe/nd-array contenente solo la variabile da classificare
         n_input_features: il numero di feature che rappresentano l'input al sistema (TemperaturaMandataGlicole)
         past_window_size: il numero di minuti per cui si guarda nel passato
         forecast_size: il numero di minuti per cui si prevede nel futuro
@@ -14,10 +16,12 @@ def prepare_dataset_classification(df1, df2, n_input_features, past_window_size,
             sono uno scalare corrispondente al valore della variabile al termine della finestra di predizione
       """
 
+    data_numpy1 = A1.values.astype('float32') if type(A1) == pd.DataFrame or type(A1) == pd.Series else A1
+    data_numpy2 = A2.values.astype('uint8') if type(A2) == pd.DataFrame or type(A2) == pd.Series else A2
     total_size = past_window_size + forecast_window_size
-    dataset2 = tf.one_hot(df2.values.astype('uint8'), 2)
-    data = tf.concat([dataset2, df1.values.astype('float32')], axis=1)
-    data = tf.data.Dataset.from_tensor_slices(data)
+    data_numpy2 = tf.one_hot(data_numpy2, 2)
+    data_numpy = np.concatenate((data_numpy2, data_numpy1), axis=1)
+    data = tf.data.Dataset.from_tensor_slices(data_numpy)
     data = data.window(total_size, shift=1, drop_remainder=True)
     data = data.flat_map(lambda k: k.batch(total_size))
 
@@ -25,10 +29,10 @@ def prepare_dataset_classification(df1, df2, n_input_features, past_window_size,
                                     regression=False)
 
 
-def prepare_dataset_regression(df, n_input_features, past_window_size, forecast_window_size, batch_size,
+def prepare_dataset_regression(A, n_input_features, past_window_size, forecast_window_size, batch_size,
                                vectorized_labels=False):
     """
-      df: dataframe di input
+      A: dataframe/nd-array di input
       n_input_features: il numero di feature che rappresentano l'input al sistema (TemperaturaMandataGlicole)
       past_window_size: il numero di minuti per cui si guarda nel passato
       forecast_size: il numero di minuti per cui si prevede nel futuro
@@ -37,8 +41,9 @@ def prepare_dataset_regression(df, n_input_features, past_window_size, forecast_
           sono uno scalare corrispondente al valore della variabile al termine della finestra di predizione
     """
 
+    data_numpy = A.values.astype('float32') if type(A) == pd.DataFrame or type(A) == pd.Series else A
     total_size = past_window_size + forecast_window_size
-    data = tf.data.Dataset.from_tensor_slices(df.values.astype('float32'))
+    data = tf.data.Dataset.from_tensor_slices(data_numpy)
     data = data.window(total_size, shift=1, drop_remainder=True)
     data = data.flat_map(lambda k: k.batch(total_size))
 
@@ -79,3 +84,24 @@ def split_inputs_and_outputs(dataset, forecast_window_size, n_input_features, ba
                                      labels_lambda(k)))
 
     return dataset.batch(batch_size).prefetch(tf.data.experimental.AUTOTUNE)
+
+
+def one_hot_encoding(A, low_end, high_end, step=1):
+    """
+    A: vettore colonna di dimensione (n,) oppure (n, 1)
+    low_end: valore minimo di A
+    high_end: valore massimo di A
+    step: fattore di quantizzazione
+
+    Output: matrice di dimensioni (n, (high_end - low_end) / step )
+    """
+    assert high_end > low_end
+
+    output = np.zeros((A.shape[0], int((high_end - low_end) / step)), dtype=np.uint8)
+
+    for i in range(A.shape[0]):
+        idx = int((A[i] - low_end) / step)
+        output[i, idx] = 1
+
+    assert output.dtype == np.uint8
+    return output

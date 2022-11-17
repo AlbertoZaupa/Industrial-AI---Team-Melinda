@@ -9,7 +9,8 @@ def get_actor(past_window, num_states, lower_bound, upper_bound):
     assert lower_bound < upper_bound
 
     inputs = tf.keras.layers.Input(shape=(past_window, num_states))
-    lstm = tf.keras.layers.LSTM(16, return_sequences=True)(inputs)
+    lstm = tf.keras.layers.GRU(16, return_sequences=True, dropout=0.1,
+                               recurrent_dropout=0.3)(inputs)
     flatten = tf.keras.layers.Flatten()(lstm)
     x = tf.keras.layers.Dense(16, activation='relu')(flatten)
     output = tf.keras.layers.Dense(1, activation='sigmoid')(x)
@@ -20,9 +21,11 @@ def get_actor(past_window, num_states, lower_bound, upper_bound):
 
 def get_critic(past_window, num_states, num_actions):
     state_inputs = tf.keras.layers.Input(shape=(past_window, num_states))
-    encoder, state_h, state_c = tf.keras.layers.LSTM(16, return_state=True)(state_inputs)
+    encoder, state_h = tf.keras.layers.GRU(16, return_state=True,
+                                           dropout=0.1, recurrent_dropout=0.3)(state_inputs)
     actions = tf.keras.Input(shape=(num_actions, 1))
-    decoder = tf.keras.layers.LSTM(16, return_sequences=True)(actions, initial_state=[state_h, state_c])
+    decoder = tf.keras.layers.GRU(16, return_sequences=True, dropout=0.1,
+                                  recurrent_dropout=0.3)(actions, initial_state=state_h)
 
     x = tf.keras.layers.Dense(16, activation='relu')(decoder)
     output = tf.keras.layers.Dense(1, activation='linear')(x)

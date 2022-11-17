@@ -6,8 +6,8 @@ from actor_critic import *
 from buffer import Buffer
 from policy import *
 
-CSV_PATH = "..."  # Inserire il path del dataset
-MODEL_PATH = "..."  # Inserire il path del modello per la simulazione
+CSV_PATH = "../../../datasets/Cella_13.csv"  # Inserire il path del dataset
+MODEL_PATH = "../../../modelli/modello1.csv"  # Inserire il path del modello per la simulazione
 PAST_WINDOW = 6*60
 NUM_STATES = 2
 NUM_ACTIONS = 1

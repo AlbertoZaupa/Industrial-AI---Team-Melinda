@@ -9,21 +9,20 @@ def get_actor(past_window, num_states, lower_bound, upper_bound):
     assert lower_bound < upper_bound
 
     inputs = tf.keras.layers.Input(shape=(past_window, num_states))
-    lstm = tf.keras.layers.GRU(16, return_sequences=True, dropout=0.1,
-                               recurrent_dropout=0.3)(inputs)
-    flatten = tf.keras.layers.Flatten()(lstm)
-    x = tf.keras.layers.Dense(16, activation='relu')(flatten)
+    gru = tf.keras.layers.GRU(16, dropout=0.1, recurrent_dropout=0.3)(inputs)
+    x = tf.keras.layers.Dense(64, activation='relu')(gru)
     output = tf.keras.layers.Dense(1, activation='sigmoid')(x)
     output = output*(upper_bound - lower_bound) + lower_bound
+    output = tf.keras.layers.RepeatVector(5)(output)
 
     return tf.keras.models.Model(inputs=inputs, outputs=output)
 
 
-def get_critic(past_window, num_states, num_actions):
+def get_critic(past_window, num_states, future_window):
     state_inputs = tf.keras.layers.Input(shape=(past_window, num_states))
     encoder, state_h = tf.keras.layers.GRU(16, return_state=True,
                                            dropout=0.1, recurrent_dropout=0.3)(state_inputs)
-    actions = tf.keras.Input(shape=(num_actions, 1))
+    actions = tf.keras.Input(shape=(future_window, 1))
     decoder = tf.keras.layers.GRU(16, return_sequences=True, dropout=0.1,
                                   recurrent_dropout=0.3)(actions, initial_state=state_h)
 
@@ -38,13 +37,13 @@ def learn(buffer, batch_size, target_actor, target_critic,
             critic_model, actor_model, critic_optimizer, 
             actor_optimizer, gamma):
   
-    # Vengono scelti casualmente <batch_size> indici
+    # Vengono scelti casualmente <BATCH_SIZE> indici
     record_range = buffer.capacity if buffer.full else buffer.counter
     batch_indices = np.random.choice(record_range, batch_size)
 
     state_batch = tf.convert_to_tensor(buffer.state_buffer[batch_indices])
     action_batch = tf.convert_to_tensor(buffer.action_buffer[batch_indices])
-    reward_batch = tf.convert_to_tensor(buffer.reward_buffer[batch_indices])
+    reward_batch = tf.convert_to_tensor(buffer.reward_buffer[batch_indices].reshape((batch_size, 5, 1)))
     reward_batch = tf.cast(reward_batch, dtype=tf.float32)
     next_state_batch = tf.convert_to_tensor(buffer.next_state_buffer[batch_indices])
 
@@ -64,7 +63,7 @@ def update(target_actor, target_critic, critic_model, actor_model,
               [next_state_batch, future_actions], training=True
             )
         critic_value = critic_model([state_batch, action_batch], training=True)
-        critic_loss = tf.math.reduce_mean(tf.math.square(y - critic_value))
+        critic_loss = tf.math.reduce_mean(tf.math.square(critic_value - y))
 
     critic_grad = tape.gradient(critic_loss, critic_model.trainable_variables)
     critic_optimizer.apply_gradients(

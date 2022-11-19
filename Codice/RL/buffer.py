@@ -1,16 +1,17 @@
 import numpy as np
 
 
-# Buffer circolare utilizzato per conservare le esperienze passate dell'agente
-class Buffer:
-    def __init__(self, past_window, num_states, num_actions, capacity=100000):
+# ReplayBuffer circolare utilizzato per conservare le esperienze passate dell'agente
+class ReplayBuffer:
+    def __init__(self, past_window, num_states, time_resolution, capacity=10000):
         self.capacity = capacity
         self.counter = 0
+        self.time_resolution = time_resolution
         self.full = False
 
         self.state_buffer = np.zeros((capacity, past_window, num_states))
-        self.action_buffer = np.zeros((capacity, num_actions))
-        self.reward_buffer = np.zeros((capacity, 1))
+        self.action_buffer = np.zeros((capacity, time_resolution, 1))
+        self.reward_buffer = np.zeros((capacity, time_resolution, 1))
         self.next_state_buffer = np.zeros((capacity, past_window, num_states))
     
     # In input prende una tupla (s,a,r,s'), che corrisponde ad un'esperienza
@@ -21,6 +22,6 @@ class Buffer:
         self.next_state_buffer[self.counter] = obs_tuple[3]
 
         if self.counter + 1 == self.capacity:
-          self.full = True
+            self.full = True
         
         self.counter = (self.counter + 1) % self.capacity

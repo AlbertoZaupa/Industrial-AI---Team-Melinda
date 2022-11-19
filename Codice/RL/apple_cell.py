@@ -1,45 +1,74 @@
 import numpy as np
-import tensorflow as tf
 from random import randint
-import gym
-
-
-# Funzione utilizzata per determinare lo stato di partenza della simulazione, che
-# viene scelto a caso dal dataset
-def draw_random_initial_state(df, past_window):
-    start = randint(0, df.shape[0] - past_window)
-    return df.iloc[start:start + past_window].values
 
 
 # Questa classe rappresenta l'ambiente simulato delle celle frigorifere
-class AppleCellEnvironment(gym.Env):
+class AppleStorageCell:
 
-    def __init__(self, model_path, reward_function, df, past_window):
-        super(AppleCellEnvironment, self).__init__()
-        self.state = None
-        self.model = tf.keras.models.load_model(model_path)  # la rete neurale utilizzata per la simulazione
-        self.reward_function = reward_function  # la funzione di ricompensa/penalità
-        self.df = df
+    """
+    Stato della cella:
+        matrice S[past_window][3], colonne:
+        - temperatura cella
+        - stato pompa
+        - temperatura glicole
+    """
+    TEMP_IDX = 0
+    PUMP_IDX = 1
+    GLYCOL_IDX = 2
+
+    def __init__(self, data_source, temp_model_on, pump_model_on, temp_model_off, pump_model_off,
+                 glycol_model_off, reward_func_on, reward_func_off, past_window, time_resolution):
+        self.data_source = data_source
+        self.reward_func_on = reward_func_on
+        self.reward_func_off = reward_func_off
         self.past_window = past_window
+        self.time_resolution = time_resolution
 
-    def step(self, glycol_temp):
-        future_cell_temp = self.model.predict(
-            (tf.reshape(self.state, (1, self.state.shape[0], self.state.shape[1])),
-             tf.reshape(glycol_temp, (1, glycol_temp.shape[0], glycol_temp.shape[1]))), verbose=0)  # la temperatura futura della cella viene calcolata
-        reward = self.reward_function(future_cell_temp, glycol_temp)  # viene calcolata la ricompensa
+        # i modelli per la simulazione
+        self.temp_model_on = temp_model_on
+        self.pump_model_on = pump_model_on
+        self.temp_model_off = temp_model_off
+        self.pump_model_off = pump_model_off
+        self.glycol_model_off = glycol_model_off
 
-        return future_cell_temp, reward, False, {}
+        self.state = None
 
-    def reset(self):
-        self.state = draw_random_initial_state(self.df, self.past_window)
+    def reset_state(self):
+        start = randint(0, self.data_source.shape[0] - self.past_window)
+        self.state = self.data_source.iloc[start:start + self.past_window].values
+        self.state = np.reshape(self.state, (1, self.past_window, self.data_source.shape[1]))
         return self.state
 
-    def update_state(self, future_cell_temp, glycol_temp):
-        # I nuovi valori delle temperature vengono salvati, mentre il campione più vecchio viene dimenticato
-        self.state = tf.convert_to_tensor(np.concatenate((self.state[1:], np.array([future_cell_temp, glycol_temp])
-                                                          .reshape((1, 2))), axis=0), np.float32)
-        return self.state
+    def update_state(self, glycol_temps):
+        if self.is_refrigeration_on():
+            self.update_state_on(glycol_temps)
+            reward = self.reward_func_on(glycol_temps[0])
+        else:
+            off_time = self.update_state_off()
+            reward = self.reward_func_off(off_time)
+        return self.state, reward
 
-    # Non è necessari implementare questa funzione
-    def render(self):
-        pass
+    def update_state_on(self, future_glycol_temps):
+        future_cell_temps = self.temp_model_on.predict((self.state, future_glycol_temps), verbose=0)[0]
+        future_pump_states = np.around(self.pump_model_on.predict((self.state, future_glycol_temps), verbose=0)[0])
+        future_glycol_temps = np.reshape(future_glycol_temps, (self.time_resolution, 1))
+        state_update = np.concatenate((future_cell_temps, future_pump_states, future_glycol_temps), axis=1)
+
+        self.state = np.concatenate((self.state[0][self.time_resolution:], state_update), axis=0)
+        self.state = np.reshape(self.state, (1, self.state.shape[0], self.state.shape[1]))
+
+    def update_state_off(self):
+        off_time = 0
+        while not self.is_refrigeration_on():
+            future_cell_temps = self.temp_model_off.predict(self.state, verbose=0)[0]
+            future_pump_states = np.around(self.pump_model_off.predict(self.state, verbose=0)[0])
+            future_glycol_temps = self.glycol_model_off.predict(self.state, verbose=0)[0]
+            state_update = np.concatenate((future_cell_temps, future_pump_states, future_glycol_temps), axis=1)
+
+            self.state = np.concatenate((self.state[0][self.time_resolution:], state_update), axis=0)
+            self.state = np.reshape(self.state, (1, self.state.shape[0], self.state.shape[1]))
+            off_time += self.time_resolution
+        return off_time
+
+    def is_refrigeration_on(self):
+        return self.state[-self.time_resolution:, self.PUMP_IDX:self.PUMP_IDX + 1].mean() > 0.5

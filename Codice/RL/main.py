@@ -1,6 +1,6 @@
 import pandas as pd
-from reward_func import *
-from apple_cell import *
+from reward import *
+from environment import *
 from agent import *
 from config import Config
 
@@ -26,24 +26,21 @@ if __name__ == "__main__":
 
     # L'ambiente di simulazione
     env = AppleStorageCell(data_source=df, temp_model_on=tf.keras.models.load_model(Config.TEMP_MODEL_ON_PATH),
-                           glycol_ret_model_on=tf.keras.models.load_model(Config.GLYCOL_RET_MODEL_ON_PATH),
                            temp_model_off=tf.keras.models.load_model(Config.TEMP_MODEL_OFF_PATH),
-                           pump_model=tf.keras.models.load_model(Config.PUMP_MODEL_PATH),
-                           glycol_ret_model_off=tf.keras.models.load_model(Config.GLYCOL_RET_MODEL_OFF_PATH),
                            glycol_model=tf.keras.models.load_model(Config.GLYCOL_MODEL_PATH),
                            reward_func_on=OnRewardFunction(min_glycol_temp=Config.MIN_GLYCOL_TEMP,
                                                            max_glycol_temp=Config.MAX_GLYCOL_TEMP),
                            reward_func_off=OffRewardFunction(), past_window=Config.PAST_WINDOW_SIZE,
                            min_glycol_temp=Config.MIN_GLYCOL_TEMP, max_glycol_temp=Config.MAX_GLYCOL_TEMP,
-                           time_unit=Config.TIME_UNIT, debug=Config.DEBUG)
+                           time_unit=Config.TIME_UNIT, temp_setpoint=Config.TEMP_SETPOINT,
+                           temp_hysteresis=Config.TEMP_HYSTERESIS, debug=Config.DEBUG)
 
     # INIZIA LA FASE DI ALLENAMENTO
 
-    # L'agente inizialmente colleziona un po' di esperienza, compiendo azioni casuali
+    # L'agente inizialmente colleziona un po' di esperienza
     curr_state = env.reset_state()
-    next_state = None
-    for i in range(Config.REPLAY_BUFFER_SIZE // 2):
-        glycol_delta = agent.random_policy()
+    for i in range(2 * Config.BATCH_SIZE):
+        glycol_delta = agent.training_policy(state=curr_state)
         next_state, reward, _ = env.update_state(glycol_delta)
         agent.replay_buffer.record((curr_state, glycol_delta, reward, next_state))
         curr_state = next_state
@@ -75,7 +72,7 @@ if __name__ == "__main__":
             i += iterations
 
         if Config.DEBUG:
-            env.plot_state(-1)
+            env.plot_state(-1)  # (Config.PAST_WINDOW_SIZE)
 
         # Viene salvata la ricompensa media dell'episodio
         avg_reward = episodic_reward / Config.EPISODE_STEPS

@@ -1,30 +1,28 @@
 import matplotlib.pyplot as plt
 import numpy as np
+import tensorflow as tf
 from random import randint
 
 
 class AppleStorageCell:
 
     # Stato della cella:
-    #     matrice S[past_window][4], colonne:
+    #     matrice S[past_window][3], colonne:
     #     - temperatura cella
     #     - stato pompa
-    #     - temperatura glicole linea ritorno
     #     - temperatura glicole linea mandata
 
     TEMP_IDX = 0
     PUMP_IDX = 1
-    GLYCOL_RET_IDX = 2
-    GLYCOL_IDX = 3
+    GLYCOL_IDX = 2
 
     # Durata massima di un intervallo di tempo in cui la pompa rimane sempre spenta
 
-    MAX_OFF_INTERVAL = 60
+    MAX_OFF_INTERVAL = 180
 
-    def __init__(self, data_source, temp_model_on, glycol_ret_model_on,
-                 temp_model_off, pump_model, glycol_ret_model_off, glycol_model,
+    def __init__(self, data_source, temp_model_on, temp_model_off, glycol_model,
                  reward_func_on, reward_func_off, past_window, time_unit, min_glycol_temp,
-                 max_glycol_temp, debug=False):
+                 max_glycol_temp, temp_hysteresis, temp_setpoint, debug=False):
 
         # Dataset da cui vengono estratti gli stati iniziali degli episodi di simulazione
         # ( vedere AppleStorageCell.reset_state() )
@@ -49,15 +47,16 @@ class AppleStorageCell:
 
         # le reti neurali che simulano l'ambiente della cella
         self.temp_model_on = temp_model_on
-        self.glycol_ret_model_on = glycol_ret_model_on
         self.temp_model_off = temp_model_off
-        self.pump_model = pump_model
         self.glycol_model = glycol_model
-        self.glycol_ret_model_off = glycol_ret_model_off
 
         # Temperatura massima e minima del glicole
         self.max_glycol_temp = max_glycol_temp
         self.min_glycol_temp = min_glycol_temp
+
+        # Temperature di setpoint ed isteresi
+        self.temp_hysteresis = temp_hysteresis
+        self.temp_setpoint = temp_setpoint
 
         self.state = None
 
@@ -84,7 +83,7 @@ class AppleStorageCell:
         # diverso da 1
         iterations = 1
 
-        if self.is_pump_on():
+        if self.pump_on():
             self.update_state_on(glycol_delta)
             reward = self.reward_func_on(self.current_glycol_temp())
         else:
@@ -100,17 +99,15 @@ class AppleStorageCell:
         # La temperatura del glicole sulla linea di mandata non può superare il valore sulla linea di ritorno, essendo
         # il risultato della miscelazione del glicole sulla linea di ritorno con un glicole più freddo
         future_glycol_temp = self.current_glycol_temp() + glycol_delta
-        if future_glycol_temp > self.current_glycol_ret_temp():
-            future_glycol_temp = self.current_glycol_ret_temp()
-        elif future_glycol_temp < self.min_glycol_temp:
+        if future_glycol_temp < self.min_glycol_temp:
             future_glycol_temp = self.min_glycol_temp
+        elif future_glycol_temp > self.max_glycol_temp:
+            future_glycol_temp = self.max_glycol_temp
 
         future_glycol_temp_tensor = np.ones((1, self.time_unit, 1)) * future_glycol_temp
         future_cell_temps = self.predict_temp(future_glycol_temp_tensor)
         future_pump_states = np.around(self.predict_pump_states())
-        future_glycol_ret = self.predict_glycol_ret(future_glycol_temp_tensor)
-        state_update = np.concatenate((future_cell_temps, future_pump_states,
-                                       future_glycol_ret, future_glycol_temp_tensor), axis=2)
+        state_update = np.concatenate((future_cell_temps, future_pump_states, future_glycol_temp_tensor), axis=2)
 
         if self.debug:
             self.state_replay = np.concatenate((self.state_replay, state_update[0]), axis=0)
@@ -129,10 +126,9 @@ class AppleStorageCell:
     def update_state_off(self):
         count = 0
         off_time = 0
-        while not self.is_pump_on():
+        while not self.pump_on():
             future_cell_temps = self.predict_temp()
-            future_glycol_ret = self.predict_glycol_ret()
-            future_glycol_temps = self.predict_glycol()
+            future_glycol_temps = self.predict_glycol_temp()
 
             # La pompa non può rimanere accesa per più di <MAX_OFF_INTERVAL> iterazioni successive
             if off_time == self.MAX_OFF_INTERVAL:
@@ -141,8 +137,7 @@ class AppleStorageCell:
                 future_pump_states = self.predict_pump_states()
                 future_pump_states = np.around(future_pump_states)
 
-            state_update = np.concatenate((future_cell_temps, future_pump_states,
-                                           future_glycol_ret, future_glycol_temps), axis=2)
+            state_update = np.concatenate((future_cell_temps, future_pump_states, future_glycol_temps), axis=2)
             if self.debug:
                 self.state_replay = np.concatenate((self.state_replay, state_update[0]), axis=0)
 
@@ -155,18 +150,18 @@ class AppleStorageCell:
 
     # Ritorna <True> se la pompa è attualmente accessa
 
-    def is_pump_on(self):
-        return self.pump_col()[:, -self.time_unit:, :].mean() > 0.5
+    def pump_on(self):
+        return self.pump_col()[0][-1][0] == 1
 
     # Ritorna il valore più recente della temperatura del glicole sulla linea di mandata
 
     def current_glycol_temp(self):
         return self.glycol_col()[0][-1][0]
 
-    # Ritorna il valore più recente della temperatura del glicole sulla linea di ritorno
+    # Ritorna il valore più recente della temperatura della cella
 
-    def current_glycol_ret_temp(self):
-        return self.glycol_ret_col()[0][-1][0]
+    def current_cell_temp(self):
+        return self.temp_col()[0][-1][0]
 
     # Ritorna una predizione della temperatura dell'aria nella cella
     # per il prossimi <time_unit> minuti
@@ -176,60 +171,33 @@ class AppleStorageCell:
     #     sono, in ordine:
     #         - temperatura cella
     #         - stato pompa
-    #         - temperatura glicole linea ritorno
     #         - temperatura glicole linea mandata
     #     La rete neurale utilizzata quando la pompa è accesa invece si aspetta in input sia una matrice analoga
     #     alla precedente, che un vettore di <time_unit> valori di temperatura del glicole
 
     def predict_temp(self, glycol_temps=None):
 
-        model_input = self.state
+        model_input = tf.convert_to_tensor(self.state)
         model = self.temp_model_off
         if glycol_temps is not None:
-            model_input = (model_input, glycol_temps)
+            model_input = (model_input, tf.convert_to_tensor(glycol_temps))
             model = self.temp_model_on
         prediction = model.predict(model_input, verbose=0)
 
         # le predizioni della rete vengono mediate per ridurre il rumore
         return np.ones((1, self.time_unit, 1)) * prediction.mean()
 
-    # Ritorna una predizione dello stato della pompa del glicole (accesa, spenta)
-    # per il prossimi <time_unit> minuti
-    #
-    # IMPORTANTE:
-    #     La rete neurale utilizzata quando la pompa è spenta si aspetta in input una matrice le cui colonne
-    #     sono, in ordine:
-    #         - stato pompa
-    #         - temperatura cella
+    # Lo stato della pompa viene simulato supponendo di conoscere le temperature di setpoint ed isteresi.
+    # Se la pompa era accesa e la cella supera la temp. di isteresi, la pompa si accende. Se la pompa
+    # era accesa e la cella scende al di sotto della temp. di setpoint, la pompa si spegne.
 
     def predict_pump_states(self):
-        model_input = np.concatenate((self.pump_col(), self.temp_col()), axis=2)
-        return self.pump_model.predict(model_input, verbose=0)
-
-    # Ritorna una predizione della temperatura del glicole sulla linea di ritorno
-    # per il prossimi <time_unit> minuti
-    #
-    # IMPORTANTE:
-    #     La rete neurale utilizzata quando la pompa è spenta si aspetta in input una matrice le cui colonne
-    #     sono, in ordine:
-    #         - temperatura glicole linea ritorno
-    #         - temperatura cella
-    #         - stato pompa
-    #         - temperatura glicole linea mandata
-    #     La rete neurale utilizzata quando la pompa è accesa invece si aspetta in input sia una matrice analoga
-    #     alla precedente, che un vettore di <time_unit> valori di temperatura del glicole
-
-    def predict_glycol_ret(self, glycol_temps=None):
-        model_input = np.concatenate((self.glycol_ret_col(), self.temp_col(), self.pump_col(), self.glycol_col()),
-                                     axis=2)
-        model = self.glycol_ret_model_off
-        if glycol_temps is not None:
-            model_input = (model_input, glycol_temps)
-            model = self.glycol_ret_model_on
-        prediction = model.predict(model_input, verbose=0)
-
-        # le predizioni della rete vengono mediate per ridurre il rumore
-        return np.ones((1, self.time_unit, 1)) * prediction.mean()
+        vec_generator = np.zeros
+        pump_is_on = self.pump_on()
+        cell_temp = self.current_cell_temp()
+        if pump_is_on and cell_temp > self.temp_setpoint or not pump_is_on and cell_temp > self.temp_hysteresis:
+            vec_generator = np.ones
+        return vec_generator((1, self.time_unit, 1))
 
     # Ritorna una predizione della temperatura del glicole sulla linea di mandata
     # per il prossimi <time_unit> minuti
@@ -240,10 +208,9 @@ class AppleStorageCell:
     #         - temperatura glicole linea mandata
     #         - temperatura cella
     #         - stato pompa
-    #         - temperatura glicole linea mandata
 
-    def predict_glycol(self):
-        model_input = np.concatenate((self.glycol_col(), self.temp_col(), self.pump_col(), self.glycol_ret_col()), axis=2)
+    def predict_glycol_temp(self):
+        model_input = tf.convert_to_tensor(np.concatenate((self.glycol_col(), self.temp_col(), self.pump_col()), axis=2))
         prediction = self.glycol_model.predict(model_input, verbose=0)
 
         # le predizioni della rete vengono mediate per ridurre il rumore
@@ -263,12 +230,6 @@ class AppleStorageCell:
     # Ritorna la colonna del tensore di stato corrispondente alla temperatura del glicole
     # sulla linea di ritorno
 
-    def glycol_ret_col(self):
-        return self.state[:, :, self.GLYCOL_RET_IDX:self.GLYCOL_RET_IDX + 1]
-
-    # Ritorna la colonna del tensore di stato corrispondente alla temperatura del glicole
-    # sulla linea di ritorno
-
     def glycol_col(self):
         return self.state[:, :, self.GLYCOL_IDX:self.GLYCOL_IDX + 1]
 
@@ -278,15 +239,11 @@ class AppleStorageCell:
         if replay_window < 0:
             replay_window = self.state_replay.shape[0]
 
-        plt.title("Cell temperature")
-        plt.plot(self.state_replay[-replay_window:, self.TEMP_IDX:self.TEMP_IDX + 1], color="orange")
+        plt.title("Cell and Glycol temperatures")
+        plt.plot(self.state_replay[-replay_window:, self.TEMP_IDX:self.TEMP_IDX + 1], label="cell temp")
+        plt.plot(self.state_replay[-replay_window:, self.GLYCOL_IDX:self.GLYCOL_IDX + 1], label="glycol temp")
+        plt.legend()
         plt.show()
         plt.title("Pump state")
         plt.plot(self.state_replay[-replay_window:, self.PUMP_IDX:self.PUMP_IDX + 1], color="red")
-        plt.show()
-        plt.title("Glycol return temperature")
-        plt.plot(self.state_replay[-replay_window:, self.GLYCOL_RET_IDX:self.GLYCOL_RET_IDX + 1], color="green")
-        plt.show()
-        plt.title("Glycol send temperature")
-        plt.plot(self.state_replay[-replay_window:, self.GLYCOL_IDX:self.GLYCOL_IDX + 1], color="blue")
         plt.show()

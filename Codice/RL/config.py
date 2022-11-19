@@ -3,25 +3,24 @@ class Config:
     TIME_UNIT = 5
     PAST_WINDOW_SIZE = 360
     MIN_GLYCOL_TEMP = -7
-    MAX_GLYCOL_TEMP = 5
-    MAX_GLYCOL_DELTA = 0.2
+    MAX_GLYCOL_TEMP = 4
+    MAX_GLYCOL_DELTA = 0.3
+    TEMP_HYSTERESIS = 1.3
+    TEMP_SETPOINT = 0.8
 
     CSV_PATH = f"../../../datasets/Cella_{CELL}_SH_merged.csv"
-    CSV_COLUMNS = ["TemperaturaCelle", "PompaGlicoleMarcia", "TemperaturaRitornoGlicole", "TemperaturaMandataGlicole"]
-    N_COLUMNS = 4
+    CSV_COLUMNS = ["TemperaturaCelle", "PompaGlicoleMarcia", "TemperaturaMandataGlicole"]
+    N_COLUMNS = 3
 
     TEMP_MODEL_ON_PATH = f"../../../modelli/temp_cell{CELL}_{TIME_UNIT}min__on"
-    GLYCOL_RET_MODEL_ON_PATH = f"../../../modelli/glycol_ret_cell{CELL}_{TIME_UNIT}min__on"
     TEMP_MODEL_OFF_PATH = f"../../../modelli/temp_cell{CELL}_{TIME_UNIT}min__off"
-    PUMP_MODEL_PATH = f"../../../modelli/pump_cell{CELL}_{TIME_UNIT}min__off"
-    GLYCOL_RET_MODEL_OFF_PATH = f"../../../modelli/glycol_ret_cell{CELL}_{TIME_UNIT}min__off"
     GLYCOL_MODEL_PATH = f"../../../modelli/glycol_cell{CELL}_{TIME_UNIT}min__off"
 
     OUTPUT_DIRECTORY = "../../../modelli/agente_rl/"
 
     DEBUG = True
 
-    REPLAY_BUFFER_SIZE = 500
+    REPLAY_BUFFER_SIZE = 5000
 
     # Learning rate
     LR = 0.001

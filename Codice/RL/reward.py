@@ -1,7 +1,6 @@
 class OnRewardFunction:
 
     def __init__(self, min_glycol_temp, max_glycol_temp):
-
         assert max_glycol_temp > min_glycol_temp
 
         # temperature massima e minima del glicole

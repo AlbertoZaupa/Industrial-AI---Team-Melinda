@@ -11,12 +11,11 @@ class Config:
     N_COLUMNS = 4
 
     TEMP_MODEL_ON_PATH = f"../../../modelli/temp_cell{CELL}_{TIME_UNIT}min__on"
-    PUMP_MODEL_ON_PATH = f"../../../modelli/pump_cell{CELL}_{TIME_UNIT}min__on"
     GLYCOL_RET_MODEL_ON_PATH = f"../../../modelli/glycol_ret_cell{CELL}_{TIME_UNIT}min__on"
     TEMP_MODEL_OFF_PATH = f"../../../modelli/temp_cell{CELL}_{TIME_UNIT}min__off"
-    PUMP_MODEL_OFF_PATH = f"../../../modelli/pump_cell{CELL}_{TIME_UNIT}min__off"
+    PUMP_MODEL_PATH = f"../../../modelli/pump_cell{CELL}_{TIME_UNIT}min__off"
     GLYCOL_RET_MODEL_OFF_PATH = f"../../../modelli/glycol_ret_cell{CELL}_{TIME_UNIT}min__off"
-    GLYCOL_MODEL_OFF_PATH = f"../../../modelli/glycol_cell{CELL}_{TIME_UNIT}min__off"
+    GLYCOL_MODEL_PATH = f"../../../modelli/glycol_cell{CELL}_{TIME_UNIT}min__off"
 
     OUTPUT_DIRECTORY = "../../../modelli/agente_rl/"
 
@@ -28,9 +27,9 @@ class Config:
     LR = 0.001
 
     # Numero totale di episodi di allenamento
-    TOTAL_EPISODES = 1000
+    TOTAL_EPISODES = 100
     # Per ogni episodio, l'agente sta nella simulazione per un'ora
-    EPISODE_STEPS = 120
+    EPISODE_STEPS = 240
     # Dimensione di una batch di training
     BATCH_SIZE = 64
 

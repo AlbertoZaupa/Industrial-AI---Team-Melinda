@@ -1,5 +1,4 @@
 import pandas as pd
-import matplotlib.pyplot as plt
 from reward_func import *
 from apple_cell import *
 from agent import *
@@ -27,15 +26,15 @@ if __name__ == "__main__":
 
     # L'ambiente di simulazione
     env = AppleStorageCell(data_source=df, temp_model_on=tf.keras.models.load_model(Config.TEMP_MODEL_ON_PATH),
-                           pump_model_on=tf.keras.models.load_model(Config.PUMP_MODEL_ON_PATH),
                            glycol_ret_model_on=tf.keras.models.load_model(Config.GLYCOL_RET_MODEL_ON_PATH),
                            temp_model_off=tf.keras.models.load_model(Config.TEMP_MODEL_OFF_PATH),
-                           pump_model_off=tf.keras.models.load_model(Config.PUMP_MODEL_OFF_PATH),
+                           pump_model=tf.keras.models.load_model(Config.PUMP_MODEL_PATH),
                            glycol_ret_model_off=tf.keras.models.load_model(Config.GLYCOL_RET_MODEL_OFF_PATH),
-                           glycol_model_off=tf.keras.models.load_model(Config.GLYCOL_MODEL_OFF_PATH),
+                           glycol_model=tf.keras.models.load_model(Config.GLYCOL_MODEL_PATH),
                            reward_func_on=OnRewardFunction(min_glycol_temp=Config.MIN_GLYCOL_TEMP,
                                                            max_glycol_temp=Config.MAX_GLYCOL_TEMP),
                            reward_func_off=OffRewardFunction(), past_window=Config.PAST_WINDOW_SIZE,
+                           min_glycol_temp=Config.MIN_GLYCOL_TEMP, max_glycol_temp=Config.MAX_GLYCOL_TEMP,
                            time_unit=Config.TIME_UNIT, debug=Config.DEBUG)
 
     # INIZIA LA FASE DI ALLENAMENTO
@@ -76,18 +75,7 @@ if __name__ == "__main__":
             i += iterations
 
         if Config.DEBUG:
-            plt.title("Cell temperature")
-            plt.plot(env.state_replay[-Config.PAST_WINDOW_SIZE:, :1], color="orange")
-            plt.show()
-            plt.title("Pump state")
-            plt.plot(env.state_replay[-Config.PAST_WINDOW_SIZE:, 1:2], color="red")
-            plt.show()
-            plt.title("Glycol return temperature")
-            plt.plot(env.state_replay[-Config.PAST_WINDOW_SIZE:, 2:3], color="green")
-            plt.show()
-            plt.title("Glycol send temperature")
-            plt.plot(env.state_replay[-Config.PAST_WINDOW_SIZE:, 3:4], color="blue")
-            plt.show()
+            env.plot_state(-1)
 
         # Viene salvata la ricompensa media dell'episodio
         avg_reward = episodic_reward / Config.EPISODE_STEPS

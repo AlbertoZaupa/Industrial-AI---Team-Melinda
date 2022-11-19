@@ -14,7 +14,7 @@ def prepare_dataset(df, n_input_features, past_window_size, forecast_size, batch
     n_input_features: il numero di feature che rappresentano l'input al sistema (TemperaturaMandataGlicole)
     past_window_size: il numero di minuti per cui si guarda nel passato
     forecast_size: il numero di minuti per cui si prevede nel futuro
-    batch_size: dimensione di una batch durante la fase di training
+    BATCH_SIZE: dimensione di una batch durante la fase di training
   """
 
   total_size = past_window_size + forecast_size

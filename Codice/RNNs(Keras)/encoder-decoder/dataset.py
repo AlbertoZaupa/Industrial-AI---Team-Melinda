@@ -3,7 +3,7 @@ import tensorflow as tf
 import numpy as np
 
 
-def prepare_dataset_classification(A1, A2, n_input_features, past_window_size, forecast_window_size,
+def prepare_dataset_classification(df1, df2, n_input_features, past_window_size, forecast_window_size,
                                    n_labels, batch_size, vectorized_labels=False):
     """
         A1: dataframe/nd-array di input, tranne la variabile da classificare
@@ -11,15 +11,15 @@ def prepare_dataset_classification(A1, A2, n_input_features, past_window_size, f
         n_input_features: il numero di feature che rappresentano l'input al sistema (TemperaturaMandataGlicole)
         past_window_size: il numero di minuti per cui si guarda nel passato
         forecast_size: il numero di minuti per cui si prevede nel futuro
-        batch_size: dimensione di una batch durante la fase di training
+        BATCH_SIZE: dimensione di una batch durante la fase di training
         vectorized_labels: se True le labels sono un vettore di lunghezza <forecast_window_size>, altrimenti le labels
             sono uno scalare corrispondente al valore della variabile al termine della finestra di predizione
       """
 
-    data_numpy1 = A1.values.astype('float32') if type(A1) == pd.DataFrame or type(A1) == pd.Series else A1
-    data_numpy2 = A2.values.astype('uint8') if type(A2) == pd.DataFrame or type(A2) == pd.Series else A2
+    data_numpy1 = df1.values.astype('float32') if type(df1) == pd.DataFrame or type(df1) == pd.Series else df1
+    data_numpy2 = df2.values.astype('uint8') if type(df2) == pd.DataFrame or type(df2) == pd.Series else df2
     total_size = past_window_size + forecast_window_size
-    data_numpy2 = tf.one_hot(data_numpy2, 2)
+    data_numpy2 = tf.reshape(tf.one_hot(data_numpy2, 2), (data_numpy2.shape[0], 2))  # [OFF_COLUMN, ON_COLUMN]
     data_numpy = np.concatenate((data_numpy2, data_numpy1), axis=1)
     data = tf.data.Dataset.from_tensor_slices(data_numpy)
     data = data.window(total_size, shift=1, drop_remainder=True)
@@ -29,19 +29,19 @@ def prepare_dataset_classification(A1, A2, n_input_features, past_window_size, f
                                     vectorized_labels, regression=False)
 
 
-def prepare_dataset_regression(A, n_input_features, past_window_size, forecast_window_size, n_labels,
+def prepare_dataset_regression(df, n_input_features, past_window_size, forecast_window_size, n_labels,
                                batch_size, vectorized_labels=False):
     """
       A: dataframe/nd-array di input
       n_input_features: il numero di feature che rappresentano l'input al sistema (TemperaturaMandataGlicole)
       past_window_size: il numero di minuti per cui si guarda nel passato
       forecast_size: il numero di minuti per cui si prevede nel futuro
-      batch_size: dimensione di una batch durante la fase di training
+      BATCH_SIZE: dimensione di una batch durante la fase di training
       vectorized_labels: se True le labels sono un vettore di lunghezza <forecast_window_size>, altrimenti le labels
           sono uno scalare corrispondente al valore della variabile al termine della finestra di predizione
     """
 
-    data_numpy = A.values.astype('float32') if type(A) == pd.DataFrame or type(A) == pd.Series else A
+    data_numpy = df.values.astype('float32') if type(df) == pd.DataFrame or type(df) == pd.Series else df
     total_size = past_window_size + forecast_window_size
     data = tf.data.Dataset.from_tensor_slices(data_numpy)
     data = data.window(total_size, shift=1, drop_remainder=True)
@@ -110,3 +110,5 @@ def one_hot_encoding(A, low_end, high_end, step=1):
 
     assert output.dtype == np.uint8
     return output
+
+

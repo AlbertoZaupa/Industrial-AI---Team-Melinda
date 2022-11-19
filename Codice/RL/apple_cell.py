@@ -107,7 +107,7 @@ class AppleStorageCell:
 
         future_glycol_temp_tensor = np.ones((1, self.time_unit, 1)) * future_glycol_temp
         future_cell_temps = self.predict_temp(future_glycol_temp_tensor)
-        future_pump_states = np.around(self.predict_pump_states(future_glycol_temp_tensor))
+        future_pump_states = np.around(self.predict_pump_states())
         future_glycol_ret = self.predict_glycol_ret(future_glycol_temp_tensor)
         state_update = np.concatenate((future_cell_temps, future_pump_states,
                                        future_glycol_ret, future_glycol_temp_tensor), axis=2)

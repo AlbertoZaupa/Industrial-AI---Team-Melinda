@@ -1,3 +1,6 @@
+"""
+Definizione dei pesi per i filtri moving average
+"""
 import numpy as np
 from    math    import pi, sqrt, exp
 

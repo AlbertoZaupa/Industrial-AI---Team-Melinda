@@ -1,0 +1,3 @@
+TemperaturaMandataGlicole           1
+TemperaturaCelle                    3
+TemperaturaMele                     3

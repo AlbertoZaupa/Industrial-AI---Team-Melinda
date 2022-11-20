@@ -1,0 +1,4 @@
+TemperaturaMandataGlicole   TemperaturaCelle
+TemperaturaCelle            TemperaturaMandataGlicole
+TemperaturaCelle            TemperaturaMele
+TemperaturaMele             TemperaturaCelle

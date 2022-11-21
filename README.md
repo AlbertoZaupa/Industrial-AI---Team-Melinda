@@ -9,8 +9,7 @@ Dentro la cartella [Codice](Codice/) è possibile trovare tutte le implementazio
   - [codegeneration.py](Codice/ARMAX/codegeneration.py) e [auto_generated_code.py](Codice/ARMAX/auto_generated_code.py) che vengono utilizzati in accoppiata per semplificare la definizione dei diversi modelli lineari.
   - [cell_preprocessing.py](Codice/ARMAX/cell_preprocessing.py) e [import_dataframe.py](Codice/ARMAX/import_dataframe.py) sono i file che vengono utilizzati per fare un pre-filtraggio sui dati e definiscono delle funzioni che vengono chiamati nel notebook jupiter.
 - [RNNs(Keras)] (Codice/RNNs(Keras/) contenente il codice per le reti neurali utilizzate:
-  - *TODO*
-
+  - **TODO**
 
 # Reinforcement Learning
 

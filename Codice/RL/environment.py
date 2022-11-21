@@ -16,10 +16,6 @@ class AppleStorageCell:
     PUMP_IDX = 1
     GLYCOL_IDX = 2
 
-    # Durata massima di un intervallo di tempo in cui la pompa rimane sempre spenta
-
-    MAX_OFF_INTERVAL = 180
-
     def __init__(self, data_source, temp_model_on, temp_model_off, glycol_model,
                  reward_func_on, reward_func_off, past_window, time_unit, min_glycol_temp,
                  max_glycol_temp, temp_hysteresis, temp_setpoint, debug=False):
@@ -129,13 +125,7 @@ class AppleStorageCell:
         while not self.pump_on():
             future_cell_temps = self.predict_temp()
             future_glycol_temps = self.predict_glycol_temp()
-
-            # La pompa non può rimanere accesa per più di <MAX_OFF_INTERVAL> iterazioni successive
-            if off_time == self.MAX_OFF_INTERVAL:
-                future_pump_states = np.ones((1, self.time_unit, 1))
-            else:
-                future_pump_states = self.predict_pump_states()
-                future_pump_states = np.around(future_pump_states)
+            future_pump_states = self.predict_pump_states()
 
             state_update = np.concatenate((future_cell_temps, future_pump_states, future_glycol_temps), axis=2)
             if self.debug:

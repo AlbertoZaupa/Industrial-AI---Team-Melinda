@@ -77,13 +77,14 @@ if __name__ == "__main__":
         # Viene salvata la ricompensa media dell'episodio
         avg_reward = episodic_reward / Config.EPISODE_STEPS
         if Config.DEBUG:
-            print(f"Episode {ep}, average reward is ==> {avg_reward}")
+            print(f"Episode {ep}:\naverage reward is ==> {avg_reward}\naverage glycol temperature is ==>"
+                  f" {env.state_replay[:, 2:].mean()}\npump duty factor: {env.state_replay[:, 1:2].mean()}")
         avg_reward_list.append(avg_reward)
 
     plt.plot(avg_reward_list)
     plt.show()
 
-    if input("Save the agent?: ") == "Y":
+    if input("Save the agent? (Y to save): ") == "Y":
         add_backslash = Config.OUTPUT_DIRECTORY[-1] != "/"
         actor_dir = "/actor" if add_backslash else "actor"
         critic_dir = "/critic" if add_backslash else "critic"

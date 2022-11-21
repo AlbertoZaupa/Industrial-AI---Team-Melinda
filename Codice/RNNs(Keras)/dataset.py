@@ -110,5 +110,3 @@ def one_hot_encoding(A, low_end, high_end, step=1):
 
     assert output.dtype == np.uint8
     return output
-
-

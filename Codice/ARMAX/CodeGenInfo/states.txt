@@ -1,0 +1,4 @@
+TemperaturaMandataGlicole           2
+TemperaturaCelle                    2
+TemperaturaMele                     2
+TemperaturaRoccia                   1

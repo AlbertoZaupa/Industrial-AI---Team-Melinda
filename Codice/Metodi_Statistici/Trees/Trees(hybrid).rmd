@@ -27,8 +27,39 @@ cella <- read_csv(cell_file)
 cella$Date <- NULL  # rimuove la prima colonna dato che ha l'orario
 # cella$UmiditaRelativa
 
-cella[target_y] <- lapply(cella[target_y], factor) # se stiamo facendo classificazione (es: apertura della pompa) trasformiamo la y in fattore
+if(length(summary(cella[target_y])) == 1){
+  stop("La variabile da predirre ha un solo livello, non è possibile fare il training")
+}
 
+
+cella[,target_y] <- ifelse(cella[,target_y] == 0,  "0",
+                    ifelse(cella[,target_y] < 10,  "1-10",
+                           ifelse(cella[,target_y] < 20,  "11-20",
+                           ifelse(cella[,target_y] < 30,  "21-30",
+                           ifelse(cella[,target_y] <40,  "31-40",
+                           ifelse(cella[,target_y] < 50,  "41-50",
+                           ifelse(cella[,target_y] < 60,  "51-60",
+                           ifelse(cella[,target_y] < 70,  "61-70",
+                           ifelse(cella[,target_y] < 80,  "71-80",
+                           ifelse(cella[,target_y] < 90,  "81-90","91-100"))))))))))
+cella[,target_y] <- lapply(cella[target_y], factor)
+cella <- droplevels(cella)
+
+for(i in seq(from = 15, to = 180, by = 15)){
+    t <- paste0(target_y,"F",i)
+cella[,t] <- ifelse(cella[,t] == 0,  "0",
+                    ifelse(cella[,t] < 10,  "1-10",
+                           ifelse(cella[,t] < 20,  "11-20",
+                           ifelse(cella[,t] < 30,  "21-30",
+                           ifelse(cella[,t] <40,  "31-40",
+                           ifelse(cella[,t] < 50,  "41-50",
+                           ifelse(cella[,t] < 60,  "51-60",
+                           ifelse(cella[,t] < 70,  "61-70",
+                           ifelse(cella[,t] < 80,  "71-80",
+                           ifelse(cella[,t] < 90,  "81-90","91-100"))))))))))
+  cella[t] <- lapply(cella[t], factor)
+
+  }
 # da vedere se conviene convertire anche il resto
 if(lagged){
   targets <- NULL
@@ -44,6 +75,8 @@ rm(targets)
 # spec(cella) # per vedere se ci sono problemi
 
 ```
+
+
 
 ```{r}
 library(tidyverse)
@@ -65,20 +98,20 @@ y <- paste0(target_y,"F", F_PRED)
 cella <- cbind(cella, targets[y])
 
 
-cella[y] <- lapply(cella[y], factor)
+# cella[y] <- lapply(cella[y], factor)
 ```
 
 Check
 ```{r}
-if(length(summary(cella[y])) == 1){
-  stop("La variabile da predirre ha un solo livello, non è possibile fare il training")
-}
+
+
+
 ```
 
 
 
 
-Type any R code in the chunk, for example:
+
 ```{r}
 cella <- as_tibble(cella)
 summary(cella) # assicuriamoci che vada tutto bene
@@ -95,19 +128,11 @@ DATASET_SIZE <- nrow(cella)
 id_test <- as.integer(DATASET_SIZE * (1 - TEST_SIZE)):DATASET_SIZE
 
 cella_test <- cella[id_test,]
-old_cella_train <- cella[-id_test,]
-
-tmp <- old_cella_train[old_cella_train[y] == 1,]
-tmp2 <- old_cella_train[old_cella_train[y] != 1,]
-tmp_id <- sample(seq_len(nrow(tmp2)),nrow(tmp))
-cella_train <- rbind(tmp, tmp2[tmp_id,])
-
-rm(old_cella_train, tmp, tmp2, tmp_id)
+cella_train <- cella[-id_test,]
 
 
-compute_metrics<- function(name = "random guess", preds = sample(0:1, 10,TRUE), test = sample(0:1, 10,TRUE)) {
+compute_metrics<- function(name = "random guess", preds = sample(0:6, 10,TRUE), test = sample(0:6, 10,TRUE)) {
   error <- data.frame(name = name,
-                      auc = auc(actual = test, predicted = preds), # area under the curve
                       accuracy = accuracy(actual = test, predicted = preds), # simple accuracy
                       ce = ce(actual = test, predicted = preds), # classification error
                       f1 = f1(actual = test, predicted = preds) # F1 score
@@ -240,6 +265,12 @@ errors <- rbind(errors, compute_metrics(
   preds = predictions,
   test = unlist(cella_test[y], use.names = FALSE)))
 ```
+
+```{r}
+library(plotly)
+plot_ly(x=cella$UmiditaRelativa, y=cella$TemperaturaCelle, z=cella$TemperaturaMandataGlicoleNominale, type="scatter3d", mode="markers", color=cella$PercentualeAperturaValvolaMiscelatriceF60)
+```
+
 
 ```{r}
 errors

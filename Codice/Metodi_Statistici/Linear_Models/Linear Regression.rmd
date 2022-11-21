@@ -6,7 +6,7 @@ output: html_notebook
 ```{r}
 library(readr)
 
-lagged <- FALSE
+lagged <- TRUE
 cell_number <- 18
 
 cell_file <- paste0("Codice/Metodi_Statistici/lagged_datasets/Cella_",cell_number,".csv")

@@ -8,7 +8,7 @@ Dentro la cartella [Codice](Codice/) è possibile trovare tutte le implementazio
   - [jupyter notebook](Codice/ARMAX/ARX.ipynb) che carica i dati dalle celle ed effettua una regressione lineare. Per funzionare necessita di:
   - [codegeneration.py](Codice/ARMAX/codegeneration.py) e [auto_generated_code.py](Codice/ARMAX/auto_generated_code.py) che vengono utilizzati in accoppiata per semplificare la definizione dei diversi modelli lineari.
   - [cell_preprocessing.py](Codice/ARMAX/cell_preprocessing.py) e [import_dataframe.py](Codice/ARMAX/import_dataframe.py) sono i file che vengono utilizzati per fare un pre-filtraggio sui dati e definiscono delle funzioni che vengono chiamati nel notebook jupiter.
-- [RNNs(Keras)] (Codice/RNNs(Keras/) contenente il codice per le reti neurali utilizzate:
+- [RNNs(Keras)](Codice/RNNs(Keras)) contenente il codice per le reti neurali utilizzate:
   - *TODO*
 
 
@@ -16,14 +16,14 @@ Dentro la cartella [Codice](Codice/) è possibile trovare tutte le implementazio
 
 ### Guida al codice
 
-Il codice dell'agente di RL si trova in `Codice/RL/`. I file all'interno della cartella sono
+Il codice dell'agente di RL si trova in [Codice/RL/](). I file all'interno della cartella sono
 i seguenti:
-- `main.py`: script contenente il loop di allenamento.
-- `config.py`: variabili di configurazione.
-- `environment.py`: codice per simulazione del comportamento della cella frigorifera.
-- `agent.py`: classe `Agent`, wrapper delle reti neurali actor e critic.
-- `reward.py`: definizione delle funzioni di ricompensa.
-- `buffer.py`: implementazione del replay buffer.
+- [main.py](Codice/RL/main.py): script contenente il loop di allenamento.
+- [config.py](Codice/RL/config.py): variabili di configurazione.
+- [environment.py](Codice/RL/environment.py): codice per simulazione del comportamento della cella frigorifera.
+- [agent.py](Codice/RL/agent.py): classe `Agent`, wrapper delle reti neurali actor e critic.
+- [reward.py](Codice/RL/reward.py): definizione delle funzioni di ricompensa.
+- [buffer.py](Codice/RL/buffer.py): implementazione del replay buffer.
 
 Prima di eseguire il codice è necessario configurare alcuni parametri secondo il proprio ambiente di lavoro.
 In particolare è necessario specificare il percorso dove si trovano i file corrispondenti alle reti neurali utilizzate per la simulazione, e la directory in cui verrà salvata la rete neurale corrispondente all'agente.

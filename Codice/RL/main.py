@@ -46,7 +46,7 @@ if __name__ == "__main__":
         curr_state = next_state
 
     # Fase di allenamento
-    avg_reward_list = []
+    avg_reward_history = []
 
     if Config.DEBUG:
         print("training begins")
@@ -79,9 +79,10 @@ if __name__ == "__main__":
         if Config.DEBUG:
             print(f"Episode {ep}:\naverage reward is ==> {avg_reward}\naverage glycol temperature is ==>"
                   f" {env.state_replay[:, 2:].mean()}\npump duty factor: {env.state_replay[:, 1:2].mean()}")
-        avg_reward_list.append(avg_reward)
+        avg_reward_history.append(avg_reward)
 
-    plt.plot(avg_reward_list)
+    plt.title("Reward history")
+    plt.plot(avg_reward_history)
     plt.show()
 
     if input("Save the agent? (Y to save): ") == "Y":

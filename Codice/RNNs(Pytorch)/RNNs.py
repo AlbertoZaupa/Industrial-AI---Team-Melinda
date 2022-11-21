@@ -40,11 +40,11 @@ class RNN(nn.Module):  # Basic Recurrent Neural Network
         # Forward propagation by passing in the input and hidden state into the model
         out, h0 = self.rnn(x, h0.detach())
 
-        # Reshaping the outputs in the shape of (BATCH_SIZE, seq_length, hidden_size)
+        # Reshaping the outputs in the shape of (batch_size, seq_length, hidden_size)
         # so that it can fit into the fully connected layer
         out = out[:, -1, :]
 
-        # Convert the final state to our desired output shape (BATCH_SIZE, output_dim)
+        # Convert the final state to our desired output shape (batch_size, output_dim)
         out = self.fc(out)
         return out
 
@@ -78,11 +78,11 @@ class LSTM(nn.Module):  # Long Short-Term Memory (LSTM)
         # Forward propagation by passing in the input, hidden state, and cell state into the model
         out, (hn, cn) = self.lstm(x, (h0.detach(), c0.detach()))
 
-        # Reshaping the outputs in the shape of (BATCH_SIZE, seq_length, hidden_size)
+        # Reshaping the outputs in the shape of (batch_size, seq_length, hidden_size)
         # so that it can fit into the fully connected layer
         out = out[:, -1, :]
 
-        # Convert the final state to our desired output shape (BATCH_SIZE, output_dim)
+        # Convert the final state to our desired output shape (batch_size, output_dim)
         out = self.fc(out)
 
         return out
@@ -112,11 +112,11 @@ class GRU(nn.Module):  # Gated Recurrent Unit
         # Forward propagation by passing in the input and hidden state into the model
         out, _ = self.gru(x, h0.detach())
 
-        # Reshaping the outputs in the shape of (BATCH_SIZE, seq_length, hidden_size)
+        # Reshaping the outputs in the shape of (batch_size, seq_length, hidden_size)
         # so that it can fit into the fully connected layer
         out = out[:, -1, :]
 
-        # Convert the final state to our desired output shape (BATCH_SIZE, output_dim)
+        # Convert the final state to our desired output shape (batch_size, output_dim)
         out = self.fc(out)
 
         return out

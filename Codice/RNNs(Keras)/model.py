@@ -3,9 +3,8 @@ import tensorflow as tf
 GRU_UNITS = 16
 
 
-# Un modello basato sull'architettura encoder-decoder
-def encoder_decoder_arch(past_window_size, n_state_features, forecast_window_size, n_input_features,
-                         regression=True, whole_output_sequence=False, n_labels=1):
+def encoder_decoder(past_window_size, n_state_features, forecast_window_size, n_control_features,
+                    output_as_sequence):
     global GRU_UNITS
 
     # La parte della rete che ha il ruolo di encoder è una LSTM
@@ -19,7 +18,8 @@ def encoder_decoder_arch(past_window_size, n_state_features, forecast_window_siz
 
     # Possiamo richiedere alla rete di prevedere l'intera sequenza di valori futuri nella finestra
     # temporale scelta, oppure di prevedere solo il valore al termine della finestra
-    future_inputs_shape = (forecast_window_size, n_input_features) if whole_output_sequence else (n_input_features, forecast_window_size)
+    future_inputs_shape = (forecast_window_size, n_control_features) if output_as_sequence else \
+        (n_control_features, forecast_window_size)
     future_inputs = tf.keras.Input(shape=future_inputs_shape, name='future_inputs')
     decoder = tf.keras.layers.GRU(GRU_UNITS, return_sequences=True, dropout=0.1,
                                   recurrent_dropout=0.3)(future_inputs, initial_state=state)
@@ -29,12 +29,18 @@ def encoder_decoder_arch(past_window_size, n_state_features, forecast_window_siz
     # Dei layer lineari vengono aggiunti al decoder
     x = tf.keras.layers.Dense(32, activation='relu')(gru)
     x = tf.keras.layers.Dense(16, activation='relu')(x)
-    finalize_model = output_layer_codec_regression if regression else output_layer_codec_classification
-    model = finalize_model(past_inputs, future_inputs, x, n_labels)
+
+    output = tf.keras.layers.Dense(1)(x)
+
+    model = tf.keras.models.Model(inputs=[past_inputs, future_inputs], outputs=output)
+    model.compile(loss='mse', optimizer='adam', metrics=['mse'])
     return model
 
 
-def seq2seq_arch(past_window_size, n_features, forecast_window_size, n_labels=1, regression=True):
+# Un modello più semplice, che riceve in input uno storico di valori dello stato della cella.
+# Poichè vengono utilizzati dei layer GRU, l'interpretazione dell'input è comunque sequenziale.
+
+def seq2seq(past_window_size, n_features, forecast_window_size):
     global GRU_UNITS
 
     inputs = tf.keras.Input(shape=(past_window_size, n_features), name='past_inputs')
@@ -46,54 +52,9 @@ def seq2seq_arch(past_window_size, n_features, forecast_window_size, n_labels=1,
     gru = tf.keras.layers.GRU(GRU_UNITS * 4, return_sequences=True, dropout=0.1,
                               recurrent_dropout=0.3)(decoder)
     x = tf.keras.layers.Dense(32)(gru)
-    finalize_model = output_layer_seq2seq_regression if regression else output_layer_seq2seq_classification
-    return finalize_model(inputs, x, n_labels)
 
+    output = tf.keras.layers.Dense(1)
 
-def output_layer_codec_regression(past_inputs, future_inputs, second_to_last_layer, n_labels=1):
-    output = tf.keras.layers.Dense(n_labels)(second_to_last_layer)
-
-    # Il modello viene compilato
-    model = tf.keras.models.Model(inputs=[past_inputs, future_inputs], outputs=output)
-    model.compile(loss='mse', optimizer='adam', metrics=["mse"])
-    return model
-
-
-def output_layer_codec_classification(past_inputs, future_inputs, second_to_last_layer, n_labels=1):
-    if n_labels == 1:
-        output = tf.keras.layers.Dense(n_labels, activation='sigmoid')(second_to_last_layer)
-        loss = "binary_crossentropy"
-    else:
-        output = tf.keras.layers.Dense(n_labels * 2, activation='softmax')(second_to_last_layer)
-        loss = "categorical_crossentropy"
-
-    # Il modello viene compilato
-    model = tf.keras.models.Model(inputs=[past_inputs, future_inputs], outputs=output)
-    model.compile(loss=loss, optimizer='adam', metrics=["accuracy"])
-
-    return model
-
-
-def output_layer_seq2seq_regression(inputs, second_to_last_layer, n_labels=1):
-    output = tf.keras.layers.Dense(n_labels)(second_to_last_layer)
-
-    # Il modello viene compilato
     model = tf.keras.models.Model(inputs=inputs, outputs=output)
-    model.compile(loss='mse', optimizer='adam', metrics=["mse"])
+    model.compile(loss='mse', optimizer='adam', metrics=['mse'])
     return model
-
-
-def output_layer_seq2seq_classification(inputs, second_to_last_layer, n_labels=1):
-    if n_labels == 1:
-        output = tf.keras.layers.Dense(n_labels, activation='sigmoid')(second_to_last_layer)
-        loss = "binary_crossentropy"
-    else:
-        output = tf.keras.layers.Dense(n_labels * 2, activation='softmax')(second_to_last_layer)
-        loss = "categorical_crossentropy"
-
-    # Il modello viene compilato
-    model = tf.keras.models.Model(inputs=inputs, outputs=output)
-    model.compile(loss=loss, optimizer='adam', metrics=["accuracy"])
-
-    return model
-

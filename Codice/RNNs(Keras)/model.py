@@ -3,8 +3,15 @@ import tensorflow as tf
 GRU_UNITS = 16
 
 
-def encoder_decoder(past_window_size, n_state_features, forecast_window_size, n_control_features,
-                    output_as_sequence):
+def encoder_decoder(past_window_size: int,  # numero di campioni passati che la rete riceve in input
+                    n_state_features: int,  # numero di variabili che costituiscono lo stato della cella
+                    # di queste variabili la rete riceve solo i valori passati
+                    forecast_window_size: int,  # orizzonte temporale della previsione
+                    n_control_features: int,  # numero di variabili di controllo, di queste la rete riceve anche
+                    # i valori futuri
+                    extended_output: bool  # se <True>, la rete effettua una previsione per ogni minuto fino a
+                    # <forecast_window_size>, altrimenti solo per l'ultimo minuto della finestra temproale
+                    ):
     global GRU_UNITS
 
     # La parte della rete che ha il ruolo di encoder è una LSTM
@@ -18,7 +25,7 @@ def encoder_decoder(past_window_size, n_state_features, forecast_window_size, n_
 
     # Possiamo richiedere alla rete di prevedere l'intera sequenza di valori futuri nella finestra
     # temporale scelta, oppure di prevedere solo il valore al termine della finestra
-    future_inputs_shape = (forecast_window_size, n_control_features) if output_as_sequence else \
+    future_inputs_shape = (forecast_window_size, n_control_features) if extended_output else \
         (n_control_features, forecast_window_size)
     future_inputs = tf.keras.Input(shape=future_inputs_shape, name='future_inputs')
     decoder = tf.keras.layers.GRU(GRU_UNITS, return_sequences=True, dropout=0.1,
@@ -40,7 +47,11 @@ def encoder_decoder(past_window_size, n_state_features, forecast_window_size, n_
 # Un modello più semplice, che riceve in input uno storico di valori dello stato della cella.
 # Poichè vengono utilizzati dei layer GRU, l'interpretazione dell'input è comunque sequenziale.
 
-def seq2seq(past_window_size, n_features, forecast_window_size):
+def seq2seq(past_window_size: int,  # numero di campioni passati che la rete riceve in input
+            n_features: int,  # numero di variabili che costituiscono lo stato della cella
+            forecast_window_size: int  # orizzonte temporale della previsione
+            ):
+
     global GRU_UNITS
 
     inputs = tf.keras.Input(shape=(past_window_size, n_features), name='past_inputs')
@@ -53,7 +64,7 @@ def seq2seq(past_window_size, n_features, forecast_window_size):
                               recurrent_dropout=0.3)(decoder)
     x = tf.keras.layers.Dense(32)(gru)
 
-    output = tf.keras.layers.Dense(1)
+    output = tf.keras.layers.Dense(1)(x)
 
     model = tf.keras.models.Model(inputs=inputs, outputs=output)
     model.compile(loss='mse', optimizer='adam', metrics=['mse'])

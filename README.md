@@ -8,21 +8,27 @@ Dentro la cartella [Codice](Codice/) è possibile trovare tutte le implementazio
   - [jupyter notebook](Codice/ARMAX/ARX.ipynb) che carica i dati dalle celle ed effettua una regressione lineare. Per funzionare necessita di:
   - [codegeneration.py](Codice/ARMAX/codegeneration.py) e [auto_generated_code.py](Codice/ARMAX/auto_generated_code.py) che vengono utilizzati in accoppiata per semplificare la definizione dei diversi modelli lineari.
   - [cell_preprocessing.py](Codice/ARMAX/cell_preprocessing.py) e [import_dataframe.py](Codice/ARMAX/import_dataframe.py) sono i file che vengono utilizzati per fare un pre-filtraggio sui dati e definiscono delle funzioni che vengono chiamati nel notebook jupiter.
-- [RNNs(Keras)] (Codice/RNNs(Keras/) contenente il codice per le reti neurali utilizzate:
-  - **TODO**
+- [RNNs(Keras)](Codice/RNNs(Keras)) contenente il codice per le reti neurali utilizzate:
+  - [dataset.py](Codice/RNNs(Keras)/dataset.py) contiene il codice necessario a preparare i dataset di training, validation e test
+    per l'allenamento delle reti neurali.
+  - [model.py](Codice/RNNs(Keras)/model.py) contiene la definizione delle architetture delle reti utilizzate, di cui la più rilevante
+    è l'architettura EncoderDecoder.
+  - [config.py](Codice/RNNs(Keras)/config.py) contiene dei parametri di configurazione per l'allenamento delle reti neurali.
+  - [script.py](Codice/RNNs(Keras)/script.py) è lo script in cui avviene l'istanziazione delle reti, l'allenamento ed il salvataggio su
+    disco del risultato. Sono presenti due esempi.
 
 # Reinforcement Learning
 
 ### Guida al codice
 
-Il codice dell'agente di RL si trova in `Codice/RL/`. I file all'interno della cartella sono
+Il codice dell'agente di RL si trova in [Codice/RL/](). I file all'interno della cartella sono
 i seguenti:
-- `main.py`: script contenente il loop di allenamento.
-- `config.py`: variabili di configurazione.
-- `environment.py`: codice per simulazione del comportamento della cella frigorifera.
-- `agent.py`: classe `Agent`, wrapper delle reti neurali actor e critic.
-- `reward.py`: definizione delle funzioni di ricompensa.
-- `buffer.py`: implementazione del replay buffer.
+- [main.py](Codice/RL/main.py): script contenente il loop di allenamento.
+- [config.py](Codice/RL/config.py): variabili di configurazione.
+- [environment.py](Codice/RL/environment.py): codice per simulazione del comportamento della cella frigorifera.
+- [agent.py](Codice/RL/agent.py): classe `Agent`, wrapper delle reti neurali actor e critic.
+- [reward.py](Codice/RL/reward.py): definizione delle funzioni di ricompensa.
+- [buffer.py](Codice/RL/buffer.py): implementazione del replay buffer.
 
 Prima di eseguire il codice è necessario configurare alcuni parametri secondo il proprio ambiente di lavoro.
 In particolare è necessario specificare il percorso dove si trovano i file corrispondenti alle reti neurali utilizzate per la simulazione, e la directory in cui verrà salvata la rete neurale corrispondente all'agente.
@@ -91,6 +97,6 @@ la penalità è tanto maggiore quanto più la temperatura è bassa.
 Pensiamo che una prospettiva molto promettente sia quella di, una volta che la sensoristica sarà presente,
 utilizzare direttamente il consumo di energia derivante dalla produzione del freddo come feedback per l'agente.
 
-Nel 2016 Google ha pubblicato un [paper](https://static.googleusercontent.com/media/research.google.com/it//pubs/archive/42542.pdf) in cui viene discussa l'implementazione di una rete neurale in grado di comprendere il consumo di energia del datacenter in base ad una serie di parametri di controllo. Nei due anni successivi, in collaborazione con DeepMind, questa rete è stata utilizzata per implementare un algoritmo RL capace di amministrare il datacenter in modo efficente.
+Nel 2014 Google ha pubblicato un [paper](https://static.googleusercontent.com/media/research.google.com/it//pubs/archive/42542.pdf) in cui viene discussa l'implementazione di una rete neurale in grado di comprendere il consumo di energia del datacenter in base ad una serie di parametri di controllo. Nei due anni successivi, in collaborazione con DeepMind, questa rete è stata utilizzata per implementare un algoritmo RL capace di amministrare il datacenter in modo efficente.
 
 Un'altra prospettiva interessante potrebbe essere applicare un algoritmo simile a tutto l'ipogeo, dando la possibilità all'agente di controllare tutte le celle contemporaneamente. Pensiamo che questo approccio, combinato con l'utilizzo del consumo energetico come feedback per l'agente, possa portare risultati molto interessanti.

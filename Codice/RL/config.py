@@ -21,16 +21,16 @@ class Config:
     # Temperatura di isteresi e di setpoint, necessarie per determinare lo stato della pompa.
     # Non avendo avuto a disposizione questi valori nel dataset, li abbiamo impostati come valori
     # costanti.
-    TEMP_HYSTERESIS = 1.3
+    TEMP_HYSTERESIS = 1.32
     TEMP_SETPOINT = 0.8
 
     # Path al dataset
     CSV_PATH = f"../../../datasets/Cella_{CELL}_SH_merged.csv"
 
-    # Le colonne che costituiscono lo stato della cella nella simulazione. L'ordine in cui le colonne
-    # sono specificate deve essere compatibile con quello che si aspetta il codice che esegue la
-    # simulazione. Fare riferimento al commento all'inizio del file 'environment.py'
-    CSV_COLUMNS = ["TemperaturaCelle", "PompaGlicoleMarcia", "TemperaturaMandataGlicole"]
+    # Le colonne che costituiscono lo stato della cella nella simulazione.
+    CELL_TEMP_COL = "TemperaturaCelle"
+    PUMP_STATE_COL = "PompaGlicoleMarcia"
+    GLYCOL_TEMP_COL = "TemperaturaMandataGlicole"
     N_COLUMNS = 3
 
     # Path alle reti utilizzate per la simulazione
@@ -61,6 +61,3 @@ class Config:
     GAMMA = 0.99
     # Parametro che regola l'update delle copie delle reti
     TAU = 0.05
-
-    def __init__(self):
-        self.N_COLUMNS = len(self.CSV_COLUMNS)

@@ -17,7 +17,6 @@ Dentro la cartella [Codice](Codice/) è possibile trovare tutte le implementazio
   - [script.py](Codice/RNNs(Keras)/script.py) è lo script in cui avviene l'istanziazione delle reti, l'allenamento ed il salvataggio su
     disco del risultato. Sono presenti due esempi.
 
-
 # Reinforcement Learning
 
 ### Guida al codice

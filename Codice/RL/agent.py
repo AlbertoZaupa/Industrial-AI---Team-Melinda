@@ -33,7 +33,7 @@ class Agent:
         # Viene aggiunto del rumore bianco alla temperatura scelta, in modo tale da permettere all'
         # agente di esplorare nuove traiettorie di azioni
         mean = 0
-        stddev = 1
+        stddev = 0.3
         noise = np.random.normal(mean, stddev, size=1)
         action = action + noise
 

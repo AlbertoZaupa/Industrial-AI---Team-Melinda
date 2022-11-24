@@ -1,15 +1,12 @@
-import pandas as pd
-from reward import *
 from environment import *
 from agent import *
 from config import Config
 
-Config()
 
 if __name__ == "__main__":
     # Viene caricato il dataset
     df = pd.read_csv(Config.CSV_PATH)
-    df = df[Config.CSV_COLUMNS]
+    df = df[[Config.CELL_TEMP_COL, Config.PUMP_STATE_COL, Config.GLYCOL_TEMP_COL]]
     df = df.replace({',': '.'}, regex=True).astype(float)
     df = df.fillna(0)
 
@@ -25,7 +22,9 @@ if __name__ == "__main__":
     target_critic.set_weights(agent.critic.get_weights())
 
     # L'ambiente di simulazione
-    env = AppleStorageCell(data_source=df, temp_model_on=tf.keras.models.load_model(Config.TEMP_MODEL_ON_PATH),
+    env = AppleStorageCell(temp_cell_values=df[Config.CELL_TEMP_COL], pump_state_values=df[Config.PUMP_STATE_COL],
+                           glycol_temp_values=df[Config.GLYCOL_TEMP_COL],
+                           temp_model_on=tf.keras.models.load_model(Config.TEMP_MODEL_ON_PATH),
                            temp_model_off=tf.keras.models.load_model(Config.TEMP_MODEL_OFF_PATH),
                            glycol_model=tf.keras.models.load_model(Config.GLYCOL_MODEL_PATH),
                            reward_func_on=OnRewardFunction(min_glycol_temp=Config.MIN_GLYCOL_TEMP,

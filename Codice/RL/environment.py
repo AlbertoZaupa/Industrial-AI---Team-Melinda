@@ -1,28 +1,44 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import tensorflow as tf
+import pandas as pd
 from random import randint
+from reward import *
 
 
 class AppleStorageCell:
 
-    # Stato della cella:
-    #     matrice S[past_window][3], colonne:
-    #     - temperatura cella
-    #     - stato pompa
-    #     - temperatura glicole linea mandata
-
-    TEMP_IDX = 0
-    PUMP_IDX = 1
-    GLYCOL_IDX = 2
-
-    def __init__(self, data_source, temp_model_on, temp_model_off, glycol_model,
-                 reward_func_on, reward_func_off, past_window, time_unit, min_glycol_temp,
-                 max_glycol_temp, temp_hysteresis, temp_setpoint, debug=False):
+    def __init__(self,
+                 temp_cell_values: pd.Series,
+                 pump_state_values: pd.Series,
+                 glycol_temp_values: pd.Series,
+                 temp_model_on: tf.keras.models.Model,
+                 temp_model_off: tf.keras.models.Model,
+                 glycol_model: tf.keras.models.Model,
+                 reward_func_on: OnRewardFunction,
+                 reward_func_off: OffRewardFunction,
+                 past_window: int,
+                 time_unit: int,
+                 min_glycol_temp: float,
+                 max_glycol_temp: float,
+                 temp_hysteresis: float,
+                 temp_setpoint: float,
+                 debug=False
+                 ):
 
         # Dataset da cui vengono estratti gli stati iniziali degli episodi di simulazione
         # ( vedere AppleStorageCell.reset_state() )
-        self.data_source = data_source
+        self.data_source = pd.concat([temp_cell_values, pump_state_values, glycol_temp_values], axis=1)
+
+        # I 3 seguenti indici rappresentano l'ordine delle relative colonne in <self.data_source>
+        # Di conseguenza lo stato della cella è:
+        #     matrice State[past_window][3], colonne:
+        #     - temperatura cella
+        #     - stato pompa
+        #     - temperatura glicole linea mandata
+        self.temp_idx = 0
+        self.pump_idx = 1
+        self.glycol_idx = 2
 
         # Funzioni che attribuiscono una ricompensa sulla base dello stato corrente della cella.
         # Una funzione per quando la pompa è attiva, ed una per quando è spenta
@@ -210,18 +226,18 @@ class AppleStorageCell:
     # aria nella cella
 
     def temp_col(self):
-        return self.state[:, :, self.TEMP_IDX:self.TEMP_IDX + 1]
+        return self.state[:, :, self.temp_idx:self.temp_idx + 1]
 
     # Ritorna la colonna del tensore di stato corrispondente allo stato della pompa del glicole (accesa, spenta)
 
     def pump_col(self):
-        return self.state[:, :, self.PUMP_IDX:self.PUMP_IDX + 1]
+        return self.state[:, :, self.pump_idx:self.pump_idx + 1]
 
     # Ritorna la colonna del tensore di stato corrispondente alla temperatura del glicole
     # sulla linea di ritorno
 
     def glycol_col(self):
-        return self.state[:, :, self.GLYCOL_IDX:self.GLYCOL_IDX + 1]
+        return self.state[:, :, self.glycol_idx:self.glycol_idx + 1]
 
     # Funzione di utility per plottare lo stato della cella
 
@@ -229,11 +245,23 @@ class AppleStorageCell:
         if replay_window < 0:
             replay_window = self.state_replay.shape[0]
 
-        plt.title("Cell and Glycol temperatures")
-        plt.plot(self.state_replay[-replay_window:, self.TEMP_IDX:self.TEMP_IDX + 1], label="cell temp")
-        plt.plot(self.state_replay[-replay_window:, self.GLYCOL_IDX:self.GLYCOL_IDX + 1], label="glycol temp")
+        plt.title("Cell temperature")
+        plt.plot(self.state_replay[-replay_window:, self.temp_idx:self.temp_idx + 1], label="cell temp")
+        plt.ylabel("T [°C]")
+        plt.xlabel("Time [min]")
         plt.legend()
         plt.show()
+
+        plt.title("Glycol temperature")
+        plt.plot(self.state_replay[-replay_window:, self.glycol_idx:self.glycol_idx + 1], label="glycol temp")
+        plt.ylabel("T [°C]")
+        plt.xlabel("Time [min]")
+        plt.legend()
+        plt.show()
+
         plt.title("Pump state")
-        plt.plot(self.state_replay[-replay_window:, self.PUMP_IDX:self.PUMP_IDX + 1], color="red")
+        plt.plot(self.state_replay[-replay_window:, self.pump_idx:self.pump_idx + 1], label="pump state")
+        plt.xlabel("On / Off")
+        plt.ylabel("Time [min]")
+        plt.legend()
         plt.show()

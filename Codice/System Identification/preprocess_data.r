@@ -42,7 +42,8 @@ process_csv_file <- function(file_name) {
 
     modifiable_columns <- c('TemperaturaCelle', 
                             'TemperaturaMandataGlicole', 
-                            'TemperaturaRitornoGlicole')
+                            'TemperaturaRitornoGlicole',
+                            'PercentualeAperturaValvolaMiscelatrice')
 
     for(var in modifiable_columns) {
         csv_data[[var]][pump_on]  <- rollapply( csv_data[[var]][pump_on], width = 50, 

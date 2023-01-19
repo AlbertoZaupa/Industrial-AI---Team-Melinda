@@ -39,30 +39,42 @@ class RKTableu:
     
 
     def integrate(self, 
-                  fun:  callable, 
-                  x0:   np.array, 
-                  u:    np.array, 
-                  t0:   float, 
-                  h:    float) -> np.array: 
+                  fun:              callable, 
+                  x0:               np.array, 
+                  u:                np.array, 
+                  p:                np.array,
+                  t0:               float, 
+                  h:                float,
+                  compute_jacobian: bool = False,
+                  fun_dp:           callable = None) -> np.array: 
         """
         Uses the tableu to integrate the function fun from t0 to t0+h given an input u.
 
         Args:
-            fun (callable): function to integrate.
-            x0 (np.array): initial state.
-            u (np.array): input of the function.
-            t0 (float): initial integration time.
-            h (float): integration step lenght.
+            fun (callable):             function to integrate.
+            x0 (np.array):              initial state.
+            u (np.array):               input of the function.
+            p (np.array):               parameters of the model.
+            t0 (float):                 initial integration time.
+            h (float):                  integration step lenght.
+            compute_jacobian (bool):    if True, the jacobian of fun w.r.t. the parameters p is 
+                                        computed.
+            fun_dp (callable):          function that computes the derivative of fun w.r.t. the 
+                                        parameters p.
 
-        Returns:
-            np.array: state at t0+h.
+        Returns:    state at t0+h.
+                    jacobian of the integration w.r.t. the parameters (optional).
         """
         
         if not self.is_explicit:
             raise NotImplementedError('Implicit Runge-Kutta tableus are not implemented yet')
         
+        if compute_jacobian and (fun_dp is None):
+            raise ValueError('If compute_jacobian is True, fun_dp must be provided')
+
         K       = np.zeros((x0.size, self.order))
         x_next  = x0
+        J_p     = np.zeros((x0.size, p.size))
 
         for i in range(self.order):
 
@@ -70,9 +82,14 @@ class RKTableu:
             for j in range(i):
                 x  += h * self.a[i][j] * K[:,j]   
             t       = t0 + self.c[i] * h
-            K[:,i]  = fun(x, u, t)
+            K[:,i]  = fun(x, u, p, t, h)
             x_next += h * self.b[i] * K[:,i]
+
+            if compute_jacobian:
+                J_p += h * self.b[i] * fun_dp(x, u, p, t, h)
         
+        if compute_jacobian:
+            return x_next, J_p
         return x_next
 
 
@@ -80,7 +97,8 @@ class RKTableu:
 # |_   _|_ _| |__ | | ___  __ _ _   _ ___ 
 #   | |/ _` | '_ \| |/ _ \/ _` | | | / __|
 #   | | (_| | |_) | |  __/ (_| | |_| \__ \
-#   |_|\__,_|_.__/|_|\___|\__,_|\__,_|___/                                    
+#   |_|\__,_|_.__/|_|\___|\__,_|\__,_|___/         
+                           
 RK1_explicit_euler = RKTableu(
     a = [[0]],
     b = [1],
@@ -109,6 +127,7 @@ RK4_explicit = RKTableu(
 # | |___ >  < (_| | | | | | | |_) | |  __/
 # |_____/_/\_\__,_|_| |_| |_| .__/|_|\___|
 #                           |_|           
+
 if __name__ == '__main__':
     """
     Example of use

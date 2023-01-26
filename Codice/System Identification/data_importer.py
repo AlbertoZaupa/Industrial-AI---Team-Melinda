@@ -18,10 +18,11 @@ ITALIAN_TO_ENGLISH = {
     'TemperaturaCelle':                         'cell_temperature',
     'TemperaturaMandataGlicole':                'inlet_fluid_temperature',
     'TemperaturaMandataGlicoleNominale':        'inlet_setpoint_temperature',
-    'TemperaturaRitornoGlicole':                'outlet_setpoint_temperature',
+    'TemperaturaRitornoGlicole':                'outlet_fluid_temperature',
     'UmiditaRelativa':                          'humidity_percentage',
     'VentilatoreMarcia':                        'ventilation_status',
-    'Minuti':                                   'minutes'
+    'Minuti':                                   'minutes',
+    'Date':                                     'date'  
 }
 
 ENGLISH_TO_ITALIAN = dict((v, k) for k, v in ITALIAN_TO_ENGLISH.items())
@@ -53,7 +54,7 @@ def translate_to_italian(df: pd.DataFrame) -> pd.DataFrame:
 
 def import_data(cell_number:            int,
                 processed_data:         bool = True,
-                translate_to_english:   bool = False) -> pd.DataFrame:
+                english_translation:    bool = False) -> pd.DataFrame:
     """ Imports data from the specified cell number. Furthermore, it adds a new column "Minuti" 
     which contains the time (in minutes) from the first measurement.
 
@@ -61,7 +62,7 @@ def import_data(cell_number:            int,
         cell_number (int):                      The cell number to import data from.
         processed_data (bool, optional):        Whether to import processed data or not. 
                                                 Defaults to True.
-        translate_to_english (bool, optional):  Whether to translate the column names to English or 
+        english_translation (bool, optional):   Whether to translate the column names to English or 
                                                 not.
 
     Returns:
@@ -86,7 +87,7 @@ def import_data(cell_number:            int,
     df['Minuti'] = (df['Date'] - df.Date[0]
                     ).apply(lambda x: x.total_seconds() / 60)
 
-    if translate_to_english:
+    if english_translation:
         df = translate_to_english(df)
 
     return df

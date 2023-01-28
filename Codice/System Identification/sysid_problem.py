@@ -99,14 +99,16 @@ class IdentificationProblem:
         self.show_info = False
         self.fig, self.ax = plt.subplots(2, 1, sharex = True)
 
-    def solve(self, show_plots=False) -> np.ndarray:
+    def solve(self, show_plots=False, p0=None) -> np.ndarray:
 
         start_logger()
 
         if show_plots:
             plt.ion()
-
-        p = np.zeros(self.model.Np)
+        if p0 is None:
+            p = np.zeros(self.model.Np)
+        else:
+            p = p0
 
         continue_algorithm = True
         reset_step = 1
@@ -118,6 +120,7 @@ class IdentificationProblem:
         first_update_with_current_step = True
         iter = 1
         th_double_step = 0.001
+        mu = 0.001
 
         while continue_algorithm:
             
@@ -128,9 +131,10 @@ class IdentificationProblem:
             (Xsim, J) = self.perform_simulation(p, reset_step, return_gradient = True)
             xsim = Xsim.flatten()
             e    = xsim - xref 
-            H    = J.T @ J
+            H    = J.T @ J + mu*np.eye(self.model.Np)
             dp_s = - np.linalg.solve(H, J.T @ e)
             cost = e.T @ e
+            mu   = mu / 10
 
             log_message(f"Expected step:     {dp_s}")
             log_message(f"Simulation cost:   {cost}")
@@ -152,6 +156,9 @@ class IdentificationProblem:
             if show_plots:
                 self.simulate_parameters(p, reset_step, iter)
                 plt.show()
+                # print("Waiting input...")
+                # input()
+                
 
             if reset_step > 300:
                 continue_algorithm = False
@@ -219,7 +226,7 @@ class IdentificationProblem:
         gamma = 0.3
         iter_line_search = 0
         max_iter_line_search = 15
-        minc    = c0 
+        minc    = 1000000*c0 
         mindp   = dp
 
         while iter_line_search < max_iter_line_search:
@@ -234,15 +241,20 @@ class IdentificationProblem:
             if c < minc:
                 minc    = c
                 mindp   = alpha * dp
+
             if c < gamma * c0:
                 log_message(f" > Succeded! alpha = {alpha: 1.5f}")
-                return dp * alpha
+                return mindp, minc
+
+            if c > minc:
+                log_message(f" > Starting to increase cost! Stopping at cost {minc}.")
+                return mindp, minc
 
             alpha = alpha * alpha_factor        
             iter_line_search = iter_line_search + 1
 
         log_message(f" > Failed!")
-        return mindp, minc
+        return dp, c0
 
 
     def simulate_parameters(self, p: np.ndarray, nreset: int = -1, iteration = -1):

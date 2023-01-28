@@ -11,18 +11,18 @@ from os.path import join, isfile
 from datetime import datetime
 
 ITALIAN_TO_ENGLISH = {
-    'PercentualeAperturaValvolaMiscelatrice':   'mixing_valve_percentage',
-    'PercentualeVelocitaVentilatori':           'ventilators_speed_percentage',
-    'PompaGlicoleMarcia':                       'pump_status',
-    'Raffreddamento':                           'cooling',
-    'TemperaturaCelle':                         'cell_temperature',
-    'TemperaturaMandataGlicole':                'inlet_fluid_temperature',
-    'TemperaturaMandataGlicoleNominale':        'inlet_setpoint_temperature',
-    'TemperaturaRitornoGlicole':                'outlet_fluid_temperature',
-    'UmiditaRelativa':                          'humidity_percentage',
-    'VentilatoreMarcia':                        'ventilation_status',
-    'Minuti':                                   'minutes',
-    'Date':                                     'date'  
+    "PercentualeAperturaValvolaMiscelatrice":   "mixing_valve_percentage",
+    "PercentualeVelocitaVentilatori":           "ventilators_speed_percentage",
+    "PompaGlicoleMarcia":                       "pump_status",
+    "Raffreddamento":                           "cooling",
+    "TemperaturaCelle":                         "cell_temperature",
+    "TemperaturaMandataGlicole":                "inlet_fluid_temperature",
+    "TemperaturaMandataGlicoleNominale":        "inlet_setpoint_temperature",
+    "TemperaturaRitornoGlicole":                "outlet_fluid_temperature",
+    "UmiditaRelativa":                          "humidity_percentage",
+    "VentilatoreMarcia":                        "ventilation_status",
+    "Minuti":                                   "minutes",
+    "Date":                                     "date"  
 }
 
 ENGLISH_TO_ITALIAN = dict((v, k) for k, v in ITALIAN_TO_ENGLISH.items())
@@ -73,18 +73,18 @@ def import_data(cell_number:            int,
         base_path = PROCESSED_DATA_PATH
     else:
         base_path = ORIGINAL_DATA_PATH
-    file_path = join(base_path, f'Cella_{cell_number}.csv')
+    file_path = join(base_path, f"Cella_{cell_number}.csv")
 
     if(not isfile(file_path)):
         raise FileNotFoundError(
-            f'File "Cella_{cell_number}.csv" do not exists in "{base_path}"')
+            f"File \"Cella_{cell_number}.csv\" do not exists in \"{base_path}\"")
 
-    print('Loading', file_path)
+    print("Loading", file_path)
 
-    df = pd.read_csv(file_path, parse_dates=['Date'])
+    df = pd.read_csv(file_path, parse_dates=["Date"])
     df = df.dropna()
     df = df.reset_index(drop=True)
-    df['Minuti'] = (df['Date'] - df.Date[0]
+    df["Minuti"] = (df["Date"] - df.Date[0]
                     ).apply(lambda x: x.total_seconds() / 60)
 
     if english_translation:
@@ -106,7 +106,7 @@ def show_cell_data(df: pd.DataFrame,
         end (datetime, optional): the end date. If not set, is ends 4 days after the beginning.
         size (tuple, optional): the size of the plot. Defaults to (15, 10).
     """
-
+    df = translate_to_italian(df)
     if begin is None:
         begin = df.Date[0]
     if end is None:
@@ -116,28 +116,29 @@ def show_cell_data(df: pd.DataFrame,
 
     fig, ax = plt.subplots(2, 1, figsize=(15, 10), sharex=True)
 
-    ax[0].plot(df.Date, df.TemperaturaMandataGlicole, label='Mandata Glicole')
-    ax[0].plot(df.Date, df.TemperaturaRitornoGlicole, label='Ritorno Glicole')
-    ax[0].plot(df.Date, df.TemperaturaCelle,          label='Celle')
+    ax[0].plot(df.Date, df.TemperaturaMandataGlicole, label="Mandata Glicole")
+    ax[0].plot(df.Date, df.TemperaturaRitornoGlicole, label="Ritorno Glicole")
+    ax[0].plot(df.Date, df.TemperaturaCelle,          label="Celle")
+    ax[0].plot(df.Date, df.TemperaturaMandataGlicoleNominale, "--", label="Set point")
     ax[0].set_xlabel(None)
-    ax[0].set_ylabel('Temperatures [°C]')
-    ax[0].legend(loc='upper right')
-    ax[0].grid(which='major', linestyle='dashed',
-               linewidth='0.5', color='lightgrey')
+    ax[0].set_ylabel("Temperatures [°C]")
+    ax[0].legend(loc="upper right")
+    ax[0].grid(which="major", linestyle="dashed",
+               linewidth="0.5", color="lightgrey")
 
     ax[1].plot(df.Date, 100*df.PompaGlicoleMarcia,
-               label='Pompa glicole (on/off)')
+               label="Pompa glicole (on/off)")
     ax[1].plot(df.Date, df.PercentualeAperturaValvolaMiscelatrice,
-               label='% valvola miscelatrice')
-    ax[1].grid(which='major', linestyle='dashed',
-               linewidth='0.5', color='lightgrey')
-    ax[1].legend(loc='upper right')
-    ax[1].set_xlabel('Date')
+               label="% valvola miscelatrice")
+    ax[1].grid(which="major", linestyle="dashed",
+               linewidth="0.5", color="lightgrey")
+    ax[1].legend(loc="upper right")
+    ax[1].set_xlabel("Date")
 
     return fig
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     df = import_data(13, False)
     show_cell_data(df, begin=datetime(2022, 10, 1))
     plt.show()

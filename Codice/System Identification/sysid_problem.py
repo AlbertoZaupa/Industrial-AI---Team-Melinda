@@ -1,12 +1,17 @@
 
-import numpy as np
-import pandas as pd
-import matplotlib.pyplot as plt
+import numpy                as np
+import pandas               as pd
+import matplotlib.pyplot    as plt
+import sysid_config         as cfg
 
-from math import ceil
+from math           import ceil
+from data_importer  import translate_to_english
+from ode_tableau    import RKTableu, RK4_explicit
+from constants      import SYSID_PATH
+from os.path        import join 
 
-from data_importer import translate_to_english
-from ode_tableau import RKTableu, RK4_explicit
+LOG_FILE   = join(SYSID_PATH, "sysid.log")
+PARAM_FILE = join(SYSID_PATH, "identified_parameters.log")
 
 COLOR_LIST = [(0.0000, 0.4470, 0.7410),
               (0.8500, 0.3250, 0.0980),
@@ -23,12 +28,12 @@ COLOR_LIST = [(0.0000, 0.4470, 0.7410),
 # |_____\___/ \__, |\__, |\___|_|   
 #             |___/ |___/           
 def start_logger():
-    f = open("sysid.log", "w")
+    f = open(LOG_FILE, "w")
     f.write("Starting identification problem...\n")
     f.close()
 
 def log_message(msg: str):
-    f = open("sysid.log", "a")
+    f = open(LOG_FILE, "a")
     f.write(msg + "\n")
     f.close()
 
@@ -41,17 +46,33 @@ def log_message(msg: str):
 #
 class Model:
     """  
-    Base class for the system's model that needs to be identified. Each derived class must set:
-    - Nx:           the number of states.
-    - Np:           the number of parameters.
-    - f:            the continuous-time differential equation that rules the system's dynamics given the 
-                    current state x, the input u and the parameters p.
-    - f_p:          the Jacobian of f with respect to the parameters p.
-    - generate_x:   the function that given the dataframe data, generate the corresponding state 
-                    vector.
-    - generate_u:   the function that given the dataframe data, generate the corresponding input 
-                    vector.
+    Abstract class for the system's model that needs to be identified.
+
+
+    Member variables
+    ----------------
+    Each derived class must set:
+    - `Nx` (int):       the number of states of the dynamics.
+    - `Np` (int):       the number of parameters to be identified.
+    - `Nu` (int):       the number of inputs of the dynamics.
+    - `h` (float):      the sampling time of the system for the integration; by default is set to 1.
+
+
+    Member functions
+    ----------------
+    Each class must implement:
+    - `f`:              the continuous-time differential equation that rules the system's dynamics,
+                        so, the function of the form
+                        :math:`dx/dt = f(x, u, p, t)`
+    - `f_p`:            the analytical Jacobian of the function f with respect to the parameters p.
+    - `generate_x`:     the function that given a row of the dataframe, extracts the corresponding
+                        ordered state vector.
+    - `generate_u`:     the function that given a row of the dataframe, extracts the corresponding
+                        ordered input vector for the system's dynamics.
+
+    See the function documentation for furthed details.
     """
+
 
     def __init__(self):
         self.Nx = 0
@@ -59,20 +80,85 @@ class Model:
         self.Np = 0
         self.h  = 1
 
+
     def f(self, x: np.ndarray, u: np.ndarray, p: np.ndarray, t: float, h: float) -> np.ndarray:
-        """ Equation of the dynamics """
+        """ Equation of the dynamics.
+        
+        Parameters
+        ----------
+        x : np.ndarray
+            The current state of the system.
+        u : np.ndarray
+            The current input of the system.
+        p : np.ndarray
+            The parameters of the dynamics model.
+        t : float
+            The time of evaluation of the system's dynamics.
+        h : float
+            Time integration step.
+
+        Returns
+        -------
+        A numpy array of shape (Nx, 1) containing the continuous time expression of the dynamics, so
+        the left-hand side of the expression
+            :math:`dx/dt = f(x, u, p, t)`
+        """
         pass
+
 
     def f_p(self, x: np.ndarray, u: np.ndarray, p: np.ndarray, t: float, h: float) -> np.ndarray:
-        """ Jacobian of the dynamics w.r.t. the parameters """
+        """ Jacobian of the dynamics w.r.t. the parameters 
+        
+        Parameters
+        ----------
+        x : np.ndarray
+            The current state of the system.
+        u : np.ndarray
+            The current input of the system.
+        p : np.ndarray
+            The parameters of the dynamics model.
+        t : float
+            The time of evaluation of the system's dynamics.
+        h : float
+            Time integration step.
+
+        Returns
+        -------
+        A numpy array of shape (Nx, Np) containing the Jacobian of the dynamics w.r.t. the the 
+        parameters p.
+        """
         pass
+
 
     def generate_x(self, df: pd.Series) -> np.ndarray:
-        """ Given a row of the dataframe, it generates the corresponding state as a vector """
+        """ Generates the measured state vector.
+        
+        Parameters
+        ----------
+        df : pd.Series
+            A row of the dataframe containing the data to be used for the identification.
+
+        Returns
+        -------
+        A numpy array of shape (Nx, 1) containing the measured state vector present in the 
+        dataframe.
+        """
         pass
 
+
     def generate_u(self, df: pd.Series) -> np.ndarray:
-        """ Given a row of the dataframe, it generates the corresponding input as a vector """
+        """ Generates the measured input vector vector.
+        
+        Parameters
+        ----------
+        df : pd.Series
+            A row of the dataframe containing the data to be used for the identification.
+
+        Returns
+        -------
+        A numpy array of shape (Nx, 1) containing the measured state vector present in the 
+        dataframe.
+        """
         pass
 
 
@@ -83,47 +169,73 @@ class Model:
 # |___\__,_|\___|_| |_|\__|_|_| |_|\___\__,_|\__|_|\___/|_| |_| |_|   |_|  \___/|_.__/|_|\___|_| |_| |_|
 #
 class IdentificationProblem:
+    """ Class that defines an identification problem.
 
-    """ 
-    Class that defines the identification problem and handles it resolution. Each identification 
-    problem is characterized by:
-    - data:     the dataframe containing the measured data of the system;
-    - model:    the model of the system that needs to be identified;
-    - cost:     the cost function that needs to be minimized.
+    Once the parametric model is provided as well as with some data to fit, this class can be used
+    to identify the parameters.
+    Such problem is regarded as an unconstrained minimization exploiting the Gauss-Newton approach
+    improved with a linear search.
+    To simplify the simbolic computation, the cost function considered is the sum of the residual 
+    squared.
+
+    While solving the problem, a logger file is built "sysid.log" containing informations that can 
+    be used for debugging.
+
+    Member variables
+    ----------------
+    - `data` (pd.DataFrame):    the dataframe containing the measured data of the system;
+    - `model` (Model):          the model of the system that needs to be identified;
+    - `ODEsolver` (RKTableau):  the integration scheme used for the integration of the dynamics;
+    
+
+    Member functions
+    ----------------
+    - `solve`:                  solves the identification problem and returns the estimated 
+                                parameters.
+    - `perform_simulation`:     performs a whole simulation of the parametric model using the 
+                                provided input data; mainly for internal use.
+    - `line_search`:            performs a line search to find the parameter update step; for 
+                                internal use only.
+    - `simulate_parameters`:    performs a simulation of the parametric model and plots the figure.
     """
+
 
     def __init__(self, data: pd.DataFrame, model: Model):
         self.data = translate_to_english(data)
         self.model = model
         self.ODEsolver = RK4_explicit
-        self.show_info = False
         self.fig, self.ax = plt.subplots(2, 1, sharex = True)
 
-    def solve(self, show_plots=False, p0=None) -> np.ndarray:
+
+    def solve(self, p0=None) -> np.ndarray:
 
         start_logger()
 
-        if show_plots:
+        if cfg.plot_enabled:
             plt.ion()
+            self.solving_problem = True
+
         if p0 is None:
             p = np.zeros(self.model.Np)
         else:
             p = p0
 
-        continue_algorithm = True
-        reset_step = 1
+        mu         = cfg.mu0
+        reset_idx  = 0
+        reset_step = cfg.reset_steps[reset_idx]
 
         Xref = np.zeros((len(self.data), self.model.Nx))
         for i in range(len(self.data)):
             Xref[i] = self.model.generate_x(self.data.iloc[i])
         xref = Xref.flatten()
-        first_update_with_current_step = True
         iter = 1
         th_double_step = 0.001
-        mu = 0.001
 
-        while continue_algorithm:
-            
+        while reset_idx < len(cfg.reset_steps):
+
+            reset_step = cfg.reset_steps[reset_idx]
+
+            print(f" > Iteration {iter: 3d}") 
             log_message(f"=================================== Iteration {iter: 3d} ===================================")
             log_message(f"Reset steps:       {reset_step: 3d}")
             log_message(f"Current arameters: {p}")
@@ -131,10 +243,10 @@ class IdentificationProblem:
             (Xsim, J) = self.perform_simulation(p, reset_step, return_gradient = True)
             xsim = Xsim.flatten()
             e    = xsim - xref 
-            H    = J.T @ J + mu*np.eye(self.model.Np)
-            dp_s = - np.linalg.solve(H, J.T @ e)
+            H    = J.T @ J 
+            dp_s = - np.linalg.solve(H + mu*np.eye(self.model.Np), J.T @ e)
             cost = e.T @ e
-            mu   = mu / 10
+            mu   = mu * cfg.mu_factor
 
             log_message(f"Expected step:     {dp_s}")
             log_message(f"Simulation cost:   {cost}")
@@ -149,24 +261,22 @@ class IdentificationProblem:
                 p = p + dp
                 first_update_with_current_step = False
 
-            if c2 > cost * (1-th_double_step):
+            if c2 > cost * (1-cfg.th_increase_steps):
                 log_message("Low cost improvement, doubling reset step count")
-                reset_step = reset_step * 2
+                reset_idx = reset_idx + 1
 
-            if show_plots:
+            if cfg.plot_enabled:
                 self.simulate_parameters(p, reset_step, iter)
                 plt.show()
-                # print("Waiting input...")
-                # input()
                 
-
-            if reset_step > 300:
-                continue_algorithm = False
-
             iter = iter + 1
         
-        if show_plots:
+        if cfg.plot_enabled:
             plt.show(block=True)
+            self.solving_problem = False
+
+        with open(PARAM_FILE, 'w') as f:
+            f.write(str(p))
         log_message("Finished!")
         return p
 
@@ -219,15 +329,16 @@ class IdentificationProblem:
         else:
             return Xsim
 
+
     def line_search(self, p0, dp, c0, nreset, xm) -> float:
         
-        alpha_factor = 1/3
-        alpha = 1
-        gamma = 0.3
-        iter_line_search = 0
+        alpha_factor         = cfg.alpha_factor
+        gamma                = cfg.gamma
+        alpha                = 1
+        iter_line_search     = 0
         max_iter_line_search = 15
-        minc    = 1000000*c0 
-        mindp   = dp
+        minc                 = c0 * 1e20
+        mindp                = dp
 
         while iter_line_search < max_iter_line_search:
             
@@ -296,9 +407,11 @@ class IdentificationProblem:
             self.ax[1].plot(U_ref[:, i], label=f"u{i+1} data")
         self.ax[1].legend()
         self.ax[1].grid()
+        self.ax[1].set_ylim([-10.0, 10.0])
 
-        plt.draw()
-        plt.pause(1)
+        if self.solving_problem:
+            plt.draw()
+            plt.pause(1)
 
         return X_sim
 

@@ -10,15 +10,58 @@ from constants import ORIGINAL_DATA_PATH, PROCESSED_DATA_PATH
 from os.path import join, isfile
 from datetime import datetime
 
+# All available labels
+#
+# "Date",
+# "InterventoTermostatoAntigelo",
+# "PercentualeAperturaValvolaMiscelatrice",
+# "PercentualeVelocitaVentilatori",
+# "PompaAvviamentiGiornalieri",
+# "PompaGlicoleMarcia",
+# "Postventilazione",
+# "Preventilazione",
+# "Raffreddamento",
+# "SbrinamentoAcqua",
+# "SbrinamentoAcquaAvviamenti",
+# "SbrinamentoAria",
+# "SelettoreFrigoManuale",
+# "SgocciolamentoDopoSbrinamentoAcqua",
+# "TemperaturaCellaMediata",
+# "TemperaturaCelle",
+# "TemperaturaMandataGlicole",
+# "TemperaturaMandataGlicoleNominale",
+# "TemperaturaMele",
+# "TemperaturaRitornoGlicole",
+# "TemperaturaRoccia1",
+# "TemperaturaRoccia2",
+# "TemperaturaRoccia3",
+# "TemperaturaRoccia4",
+# "Umidificazione",
+# "UmidificazioneAvviamenti",
+# "UmiditaRelativa",
+# "ValvolaSbrinamentoAcquaAperta",
+# "VentilatoreAvviamentiGiornalieri",
+# "VentilatoreMarcia",
+# "VentilazioneAntistratificazionePortaAperta",
+# "VentilazioneForzata"
+
 ITALIAN_TO_ENGLISH = {
     "PercentualeAperturaValvolaMiscelatrice":   "mixing_valve_percentage",
     "PercentualeVelocitaVentilatori":           "ventilators_speed_percentage",
     "PompaGlicoleMarcia":                       "pump_status",
     "Raffreddamento":                           "cooling",
     "TemperaturaCelle":                         "cell_temperature",
+    "TemperaturaCellaMediata":                  "mean_cell_temperature",
     "TemperaturaMandataGlicole":                "inlet_fluid_temperature",
     "TemperaturaMandataGlicoleNominale":        "inlet_setpoint_temperature",
     "TemperaturaRitornoGlicole":                "outlet_fluid_temperature",
+    "TemperaturaMele":                          "apple_temperature",
+    "TemperaturaRoccia1":                       "rock1_temperature",
+    "TemperaturaRoccia2":                       "rock2_temperature",
+    "TemperaturaRoccia3":                       "rock3_temperature",
+    "TemperaturaRoccia4":                       "rock4_temperature",
+    "Preventilazione":                          "pre_ventilation",
+    "Postventilazione":                         "post_ventilation",
     "UmiditaRelativa":                          "humidity_percentage",
     "VentilatoreMarcia":                        "ventilation_status",
     "Minuti":                                   "minutes",
@@ -26,6 +69,7 @@ ITALIAN_TO_ENGLISH = {
 }
 
 ENGLISH_TO_ITALIAN = dict((v, k) for k, v in ITALIAN_TO_ENGLISH.items())
+LABELS_TO_KEEP     = list(ITALIAN_TO_ENGLISH.keys())
 
 
 def translate_to_english(df: pd.DataFrame) -> pd.DataFrame:
@@ -83,6 +127,7 @@ def import_data(cell_number:            int,
 
     df = pd.read_csv(file_path, parse_dates=["Date"])
     df = df.dropna()
+    df = df[df.columns.intersection(LABELS_TO_KEEP)]
     df = df.reset_index(drop=True)
     df["Minuti"] = (df["Date"] - df.Date[0]
                     ).apply(lambda x: x.total_seconds() / 60)

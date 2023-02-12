@@ -1,6 +1,6 @@
 """ Inlet temperature test model.
 
-This module is used to develop the model of the inlet temperature of the cell lonely.
+This module is used to develop the model of the outlet temperature of the cell lonely.
 
 Info
 ----
@@ -16,15 +16,17 @@ from data_importer import import_data
 from sysid_functions import *
 
 STATE_VARIABLES = [
-    "inlet_fluid_temperature"
+    "outlet_fluid_temperature"
     ]
 INPUT_VARIABLES = [
     "pump_status", 
-    "inlet_setpoint_temperature", 
-    "rock_temperature", 
+    "inlet_fluid_temperature", 
     "cell_temperature", 
-    "outlet_fluid_temperature", 
-    "time_free_run"
+    "rock_temperature", 
+    "pump_status_other",
+    "outlet_fluid_temperature_other",
+    "time_free_run",
+    "time_free_run_other"
     ]
 
 
@@ -52,15 +54,22 @@ def import_model_data(cell_number: int = 13) -> pd.DataFrame:
     rock_labels             = ["rock1_temperature", "rock2_temperature", "rock3_temperature"]
     df["rock_temperature"]  = df[rock_labels].mean(axis = 1)
     df["time_free_run"]     = 0
+    df["time_free_run_other"] = 0
 
     for i in range(1, len(df)):
         if df.pump_status[i] == 1:
             df.time_free_run[i] = 0
         else:
             df.time_free_run[i] = df.time_free_run[i-1] + 1
+        
+        if df.pump_status_other[i] == 1:
+            df.time_free_run_other[i] = 0
+        else:
+            df.time_free_run_other[i] = df.time_free_run_other[i-1] + 1
 
     return df
 
+T_DLY = 15
 
 class Model(Model):
 
@@ -68,7 +77,7 @@ class Model(Model):
     def __init__(self, h):
         self.Nx = len(STATE_VARIABLES)
         self.Nu = len(INPUT_VARIABLES)
-        self.Np = 8
+        self.Np = 11
         self.h  = h
 
 
@@ -84,44 +93,72 @@ class Model(Model):
         for i in range(self.Nu):
             u[i] = df[INPUT_VARIABLES[i]]
         return u
-    
 
     def f(self, x: np.array, u: np.array, p: np.array, t: float, h: float) -> np.array:
         dx = np.zeros(self.Nx)
 
-        Tin     = x[0]
+        Tout    = x[0]
         pump    = u[0]
-        Tsp     = u[1]
-        Tcell   = u[3]
-        t       = u[5]
+        Tin     = u[1]
+        Tcell   = u[2]
+        Trock   = u[3]
+        pump_o  = u[4]
+        Tout_o  = u[5]
+        t_free  = u[6]
+        t_free_o = u[7]
 
-        if pump > 0:    # pump  on
-            dx[0] = - (Tin-Tsp)/h
+
+        if pump > 0:
+            dx[0] += - 0.7 * (Tout-Tin + p[0]) / h
+            return dx
+
+        if t_free < T_DLY:        
+            dx[0] += logistic_function(Tout-Tin - p[0], p[8:11])
+            return dx
         else:
-            dx[0] += p[0] + logistic_function(t, p[1:4])
-            dx[0] += p[4] * (Tin - Tcell)
+            dx[0] += p[1] * (Tout - p[2])
             dx[0] += p[5]
-            dx[0] += p[6] * (p[7] - Tin)
+            dx[0] += p[6] * (Tout - Tin - p[7])
+
+        if pump_o == 1 or t_free_o < T_DLY:
+            dx[0] += p[3] * (Tout - Tout_o - p[4])
 
         return dx
     
 
     def f_p(self, x: np.array, u: np.array, p: np.array, t: float, h: float) -> np.ndarray:
-        
         J = np.zeros((self.Nx, self.Np))
 
-        Tin     = x[0]
+        Tout    = x[0]
         pump    = u[0]
-        Tcell   = u[3]
-        t       = u[5]
+        Tin     = u[1]
+        Tcell   = u[2]
+        Trock   = u[3]
+        pump_o  = u[4]
+        Tout_o  = u[5]
+        t_free  = u[6]
+        t_free_o    = u[7]
 
-        if pump == 0:
-            J[0, 0]     = 1
-            J[0, 1:4]   = logistic_function_jacobian(t, p[1:4])
-            J[0, 4]     = Tin - Tcell
-            J[0, 5]     = 1
-            J[0, 6]     = p[7] - Tin
-            J[0, 7]     = p[6]
+        if pump > 0:
+            J[0, 0] = -0.7/h
+            return J
+        
+        if t_free < T_DLY:
+            J[0, 0] = logistic_function_jacobian_state(Tout-Tin-p[0], p[8:11])
+            J[0, 8:11] = logistic_function_jacobian(Tout-Tin-p[0], p[8:11])
+            return J
+
+        else:
+            J[0, 1]   = Tout - p[2]
+            J[0, 2]   = -p[1]
+            J[0, 5]   = 1
+            J[0, 6]   = (Tout - Tin - p[7])
+            J[0, 7]   = -p[6]
+        
+        if pump_o == 1 or t_free_o < T_DLY:
+            J[0, 3] = Tout - Tout_o - p[4]
+            J[0, 4] = -p[3]
+
         return J
     
     def simulate(self, df: pd.DataFrame, p: np.ndarray):

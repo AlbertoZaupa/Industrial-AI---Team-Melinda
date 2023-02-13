@@ -159,25 +159,25 @@ def show_cell_data(df: pd.DataFrame,
 
     df = df[(df.Date >= begin) & (df.Date <= end)]
 
-    fig, ax = plt.subplots(2, 1, figsize=(15, 10), sharex=True)
+    fig, ax = plt.subplots(2, 1, figsize=size, sharex=True)
 
-    ax[0].plot(df.Date, df.TemperaturaMandataGlicole, label="Mandata Glicole")
-    ax[0].plot(df.Date, df.TemperaturaRitornoGlicole, label="Ritorno Glicole")
-    ax[0].plot(df.Date, df.TemperaturaCelle,          label="Celle")
-    ax[0].plot(df.Date, df.TemperaturaMandataGlicoleNominale, "--", label="Set point")
+    ax[0].plot(df.Date, df.TemperaturaMandataGlicole, label="inlet")
+    ax[0].plot(df.Date, df.TemperaturaRitornoGlicole, label="outlet")
+    ax[0].plot(df.Date, df.TemperaturaCelle,          label="cell")
+    ax[0].plot(df.Date, df.TemperaturaMandataGlicoleNominale, "--", label="setpoint")
     ax[0].set_xlabel(None)
     ax[0].set_ylabel("Temperatures [°C]")
-    ax[0].legend(loc="upper right")
+    ax[0].legend(loc="lower right")
     ax[0].grid(which="major", linestyle="dashed",
                linewidth="0.5", color="lightgrey")
 
     ax[1].plot(df.Date, 100*df.PompaGlicoleMarcia,
-               label="Pompa glicole (on/off)")
+               label="pump status [on/off]")
     ax[1].plot(df.Date, df.PercentualeAperturaValvolaMiscelatrice,
-               label="% valvola miscelatrice")
+               label="mixing valve aperture [%]")
     ax[1].grid(which="major", linestyle="dashed",
                linewidth="0.5", color="lightgrey")
-    ax[1].legend(loc="upper right")
+    ax[1].legend(loc="lower right")
     ax[1].set_xlabel("Date")
 
     return fig

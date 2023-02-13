@@ -28,11 +28,22 @@ COLOR_LIST = [(0.0000, 0.4470, 0.7410),
 # |_____\___/ \__, |\__, |\___|_|   
 #             |___/ |___/           
 def start_logger():
+    """Initialize the log file
+    
+    The file "sysid.log" is created on the directory of the system identification module.
+    """
     f = open(LOG_FILE, "w")
     f.write("Starting identification problem...\n")
     f.close()
 
 def log_message(msg: str):
+    """Writes a message to the log file
+    
+    Parameters
+    ----------
+    msg : str
+        The message to be written to the log file.
+    """
     f = open(LOG_FILE, "a")
     f.write(msg + "\n")
     f.close()
@@ -208,9 +219,25 @@ class IdentificationProblem:
 
 
     def solve(self, p0=None) -> np.ndarray:
+        """ Main function to solve the identification problem.
+        
+        The function exploits the Gauss-Newton approach to solve the problem considering as cost the 
+        norm of the residuals squared.
+
+        
+        Parameters
+        ----------
+        p0 : np.ndarray, optional
+            The initial guess for the parameters.
+            If not provided, a vector of zeros is used.
+
+
+        Returns
+        -------
+        A numpy array of shape (Np, 1) containing the identified parameters.
+        """
 
         start_logger()
-
         if cfg.plot_enabled:
             plt.ion()
             self.solving_problem = True
@@ -229,27 +256,33 @@ class IdentificationProblem:
             Xref[i] = self.model.generate_x(self.data.iloc[i])
         xref = Xref.flatten()
         iter = 1
-        th_double_step = 0.001
 
         while reset_idx < len(cfg.reset_steps):
 
             reset_step = cfg.reset_steps[reset_idx]
 
             print(f" > Iteration {iter: 3d}") 
-            log_message(f"=================================== Iteration {iter: 3d} ===================================")
-            log_message(f"Reset steps:       {reset_step: 3d}")
+            log_message("==================================="
+                        f"Iteration {iter: 3d}" 
+                        "===================================")
+            log_message(f"Reset steps:       {reset_step: d}")
             log_message(f"Current arameters: {p}")
 
             (Xsim, J) = self.perform_simulation(p, reset_step, return_gradient = True)
+            J    = J / len(self.data)
             xsim = Xsim.flatten()
             e    = xsim - xref 
             H    = J.T @ J 
             dp_s = - np.linalg.solve(H + mu*np.eye(self.model.Np), J.T @ e)
             cost = e.T @ e
-            mu   = mu * cfg.mu_factor
+
+            tmp = (H + mu*np.eye(self.model.Np) ) @ J.T
+            sv  = np.linalg.svd(tmp, compute_uv=False)
 
             log_message(f"Expected step:     {dp_s}")
             log_message(f"Simulation cost:   {cost}")
+            log_message(f"Mu:                {mu: .2e}")
+            log_message(f"Singular values:   max={sv[0]: .2e} - min={sv[-1]: .2e}")
             log_message("Performing line-search...")
             dp, c2   = self.line_search(p, dp_s, cost, reset_step, xref)
             log_message("After line-search:")
@@ -259,7 +292,10 @@ class IdentificationProblem:
             if np.all(dp != dp_s) or cost > c2:
                 log_message("Updating parameters")
                 p = p + dp
+                mu = mu * cfg.mu_factor
                 first_update_with_current_step = False
+            else:
+                mu = mu / (cfg.mu_factor**3)
 
             if c2 > cost * (1-cfg.th_increase_steps):
                 log_message("Low cost improvement, doubling reset step count")
@@ -286,15 +322,26 @@ class IdentificationProblem:
         Given a set of parameters, it simulates the system based on the stored model and data and it
         compute the cost (that needs to be minimized) and it's gradient w.r.t. the parameters.
 
-        Input:
-            - p:    the set of parameters to simulate.
 
-        Returns:
-            - cost: the computed cost.
-            - J:    the gradient of the cost w.r.t. the parameters.
+        Parameters
+        ----------
+        p: np.ndarray
+            The set of parameters to simulate.
+        nreset: int
+            The number of steps after which the state is reset to the initial measured condition.
+        return_gradient: bool
+            If True, the gradient of the cost w.r.t. the parameters is also computed. 
+            Defaults to false.
+
+
+        Returns
+        -------
+        X: np.ndarray
+            The simulated state trajectory.
+        J: np.ndarray
+            The gradient of the cost w.r.t. the parameters. Only returned if return_gradient is the
+            corresponding flag is enabled.
         """
-        # import warnings
-        # warnings.filterwarnings("error")
 
         N       = len(self.data)
         Xsim    = np.zeros((N, self.model.Nx))
@@ -331,23 +378,42 @@ class IdentificationProblem:
 
 
     def line_search(self, p0, dp, c0, nreset, xm) -> float:
+        """ Performs a line search given a set of a parameters and a search direction.
         
+        Parameters
+        ----------
+        p0: np.ndarray
+            The set of parameters to start the line search from.
+        dp: np.ndarray
+            The search direction.
+        c0: float
+            The cost of the current parameters p0.
+        nreset: int
+            The number of steps after which the state is reset to the initial measured condition.
+        xm: np.ndarray
+            The vector of the measured state trajectory.
+
+        Returns
+        -------
+        A tuple containing the step to apply, a (Np, 1) array, and the cost of the new parameters.
+        """ 
+
         alpha_factor         = cfg.alpha_factor
         gamma                = cfg.gamma
         alpha                = 1
         iter_line_search     = 0
         max_iter_line_search = 15
-        minc                 = c0 * 1e20
+        minc                 = c0 * 1e60
         mindp                = dp
 
-        while iter_line_search < max_iter_line_search:
+        while iter_line_search < cfg.max_linesearch_eval:
             
             p    = p0 + alpha * dp
             Xsim = self.perform_simulation(p, nreset, False)
             xsim = Xsim.flatten()
             e    = xsim - xm
             c    = e.T @ e
-            log_message(f" > [{int(iter_line_search + 1): 2d}/{max_iter_line_search: 2d}] alpha = {alpha: 1.5f} - cost = {c: 6.3f}")
+            log_message(f" > [{int(iter_line_search + 1): 2d}/{cfg.max_linesearch_eval: 2d}] alpha = {alpha: 1.5f} - cost = {c: 6.3f}")
 
             if c < minc:
                 minc    = c
@@ -357,7 +423,7 @@ class IdentificationProblem:
                 log_message(f" > Succeded! alpha = {alpha: 1.5f}")
                 return mindp, minc
 
-            if c > minc:
+            if c > minc and c < c0:
                 log_message(f" > Starting to increase cost! Stopping at cost {minc}.")
                 return mindp, minc
 
@@ -369,12 +435,18 @@ class IdentificationProblem:
 
 
     def simulate_parameters(self, p: np.ndarray, nreset: int = -1, iteration = -1):
-        """
-        Given a set of parameters, it simulates the system based on the stored model and data.
+        """ Given a set of parameters, it simulates them and provides.
 
-        Input:
-            - p:        the set of parameters to simulate.
-            - nreset:   the number of steps after which the state is reset to the initial value.
+        Parameters
+        ----------
+        p: np.ndarray
+            The set of parameters to simulate.
+        nreset: int
+            The number of steps after which the state is reset to the initial measured condition.
+            Defaults to -1, that is, no state reset is applied.
+        iteration: int
+            Counter of the iteration inside the minimization, for plotting purposes.
+            Defaults to -1, and in this case no title is set to the plot.
 
         Returns:
             - Xsim: the simulated state of the system.

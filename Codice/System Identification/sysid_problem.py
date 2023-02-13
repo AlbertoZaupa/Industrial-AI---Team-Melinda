@@ -8,10 +8,11 @@ from math           import ceil
 from data_importer  import translate_to_english
 from ode_tableau    import RKTableu, RK4_explicit
 from constants      import SYSID_PATH
-from os.path        import join 
+from os.path        import join, isfile
 
-LOG_FILE   = join(SYSID_PATH, "sysid.log")
-PARAM_FILE = join(SYSID_PATH, "identified_parameters.log")
+LOG_FILE    = join(SYSID_PATH, "sysid.log")
+PARAM_FILE  = join(SYSID_PATH, "identified_parameters.log")
+EXPORT_FILE = join(SYSID_PATH, "exported_parameters.json")
 
 COLOR_LIST = [(0.0000, 0.4470, 0.7410),
               (0.8500, 0.3250, 0.0980),
@@ -63,10 +64,14 @@ class Model:
     Member variables
     ----------------
     Each derived class must set:
-    - `Nx` (int):       the number of states of the dynamics.
-    - `Np` (int):       the number of parameters to be identified.
-    - `Nu` (int):       the number of inputs of the dynamics.
-    - `h` (float):      the sampling time of the system for the integration; by default is set to 1.
+    `Nx`: int      
+        the number of states of the dynamics.
+    `Np`: int       
+        the number of parameters to be identified.
+    `Nu`: int       
+        the number of inputs of the dynamics.
+    `h`: float      
+        the sampling time of the system for the integration; by default is set to 1.
 
 
     Member functions
@@ -171,6 +176,35 @@ class Model:
         dataframe.
         """
         pass
+
+
+def export_parameters(pars: np.ndarray, mdl: Model) -> None:
+    import json 
+
+    if isfile(EXPORT_FILE):
+        with open(EXPORT_FILE, "r") as f:
+            all_params = json.load(f)
+    else:
+        all_params = {}
+
+    all_params[mdl.name] = pars.tolist()
+    with open(EXPORT_FILE, "w") as f:
+        json.dump(all_params, f, indent=4)
+
+
+def import_parameters(mdl: Model) -> np.ndarray:
+    import json
+    
+    if isfile(EXPORT_FILE):
+        with open(EXPORT_FILE, "r") as f:
+            all_params = json.load(f)
+    else:
+        all_params = {}
+
+    if mdl.name in all_params:
+        return np.array(all_params[mdl.name])
+    else:
+        return np.zeros(mdl.Np)
 
 
 #  ___    _            _   _  __ _           _   _               ____            _     _
@@ -279,6 +313,10 @@ class IdentificationProblem:
             tmp = (H + mu*np.eye(self.model.Np) ) @ J.T
             sv  = np.linalg.svd(tmp, compute_uv=False)
 
+            if np.linalg.norm(dp_s) > 20:
+                log_message("Step size exceeds length 20, reducing it")
+                dp_s = dp_s / np.linalg.norm(dp_s) * 20
+
             log_message(f"Expected step:     {dp_s}")
             log_message(f"Simulation cost:   {cost}")
             log_message(f"Mu:                {mu: .2e}")
@@ -292,10 +330,11 @@ class IdentificationProblem:
             if np.all(dp != dp_s) or cost > c2:
                 log_message("Updating parameters")
                 p = p + dp
-                mu = mu * cfg.mu_factor
+                if mu > 1e-12:
+                    mu = mu * cfg.mu_factor
                 first_update_with_current_step = False
             else:
-                mu = mu / (cfg.mu_factor**3)
+                mu = mu / (cfg.mu_factor**6)
 
             if c2 > cost * (1-cfg.th_increase_steps):
                 log_message("Low cost improvement, doubling reset step count")
@@ -419,9 +458,9 @@ class IdentificationProblem:
                 minc    = c
                 mindp   = alpha * dp
 
-            if c < gamma * c0:
-                log_message(f" > Succeded! alpha = {alpha: 1.5f}")
-                return mindp, minc
+            # if c < gamma * c0:
+            #     log_message(f" > Succeded! alpha = {alpha: 1.5f}")
+            #     return mindp, minc
 
             if c > minc and c < c0:
                 log_message(f" > Starting to increase cost! Stopping at cost {minc}.")

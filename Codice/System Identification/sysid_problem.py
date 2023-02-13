@@ -192,8 +192,13 @@ def export_parameters(pars: np.ndarray, mdl: Model) -> None:
         json.dump(all_params, f, indent=4)
 
 
-def import_parameters(mdl: Model) -> np.ndarray:
+def import_parameters(mdl) -> np.ndarray:
     import json
+
+    if isinstance(mdl, str):
+        mdl_name = mdl
+    else:
+        mdl_name = mdl.name
     
     if isfile(EXPORT_FILE):
         with open(EXPORT_FILE, "r") as f:
@@ -201,8 +206,8 @@ def import_parameters(mdl: Model) -> np.ndarray:
     else:
         all_params = {}
 
-    if mdl.name in all_params:
-        return np.array(all_params[mdl.name])
+    if mdl_name in all_params:
+        return np.array(all_params[mdl_name])
     else:
         return np.zeros(mdl.Np)
 
@@ -250,6 +255,8 @@ class IdentificationProblem:
         self.model = model
         self.ODEsolver = RK4_explicit
         self.fig, self.ax = plt.subplots(2, 1, sharex = True)
+        self.solving_problem = False
+        self.data_length = len(data) * model.Nx
 
 
     def solve(self, p0=None) -> np.ndarray:
@@ -301,14 +308,15 @@ class IdentificationProblem:
                         "===================================")
             log_message(f"Reset steps:       {reset_step: d}")
             log_message(f"Current arameters: {p}")
+            log_message(f"Parameters norm:   {np.linalg.norm(p)}")
 
             (Xsim, J) = self.perform_simulation(p, reset_step, return_gradient = True)
-            J    = J / len(self.data)
+            J    = J / self.data_length
             xsim = Xsim.flatten()
             e    = xsim - xref 
             H    = J.T @ J 
             dp_s = - np.linalg.solve(H + mu*np.eye(self.model.Np), J.T @ e)
-            cost = e.T @ e
+            cost = e.T @ e / self.data_length
 
             tmp = (H + mu*np.eye(self.model.Np) ) @ J.T
             sv  = np.linalg.svd(tmp, compute_uv=False)
@@ -451,7 +459,7 @@ class IdentificationProblem:
             Xsim = self.perform_simulation(p, nreset, False)
             xsim = Xsim.flatten()
             e    = xsim - xm
-            c    = e.T @ e
+            c    = e.T @ e / self.data_length
             log_message(f" > [{int(iter_line_search + 1): 2d}/{cfg.max_linesearch_eval: 2d}] alpha = {alpha: 1.5f} - cost = {c: 6.3f}")
 
             if c < minc:

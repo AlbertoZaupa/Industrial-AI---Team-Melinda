@@ -83,6 +83,6 @@ def logistic_function_jacobian_state(x: float, pars: np.ndarray) -> float:
 
     e   = exp(-k * (x - x0))
     num = e * L * k
-    den = (1 + e)**2
+    den = 1 + 2
 
-    return num / den
+    return num / den**2

@@ -69,6 +69,7 @@ class Model(Model):
         self.Nu = len(INPUT_VARIABLES)
         self.Np = 6
         self.h  = h
+        self.name = "Tcell"
 
 
     def generate_x(self, df: pd.Series) -> np.array:

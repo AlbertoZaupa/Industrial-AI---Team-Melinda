@@ -79,6 +79,7 @@ class Model(Model):
         self.Nu = len(INPUT_VARIABLES)
         self.Np = 11
         self.h  = h
+        self.name = "Tout"
 
 
     def generate_x(self, df: pd.Series) -> np.array:
@@ -113,7 +114,7 @@ class Model(Model):
             return dx
 
         if t_free < T_DLY:        
-            dx[0] += logistic_function(Tout-Tin - p[0], p[8:11])
+            dx[0] += logistic_function(Tout-Tin + p[0], p[8:11])
             return dx
         else:
             dx[0] += p[1] * (Tout - p[2])
@@ -144,8 +145,8 @@ class Model(Model):
             return J
         
         if t_free < T_DLY:
-            J[0, 0] = logistic_function_jacobian_state(Tout-Tin-p[0], p[8:11])
-            J[0, 8:11] = logistic_function_jacobian(Tout-Tin-p[0], p[8:11])
+            J[0, 0]    = logistic_function_jacobian_state(Tout-Tin+p[0], p[8:11])
+            J[0, 8:11] = logistic_function_jacobian(Tout-Tin+p[0], p[8:11])
             return J
 
         else:

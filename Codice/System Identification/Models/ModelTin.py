@@ -70,6 +70,7 @@ class Model(Model):
         self.Nu = len(INPUT_VARIABLES)
         self.Np = 8
         self.h  = h
+        self.name = "Tin"
 
 
     def generate_x(self, df: pd.Series) -> np.array:

@@ -1,4 +1,14 @@
+""" Module for solving an identification problem.
 
+Here are defined all classes that can be used to solve an identification problem. In particular
+"Model" is the abstract class that defines the interface that each model to be identified must 
+comply with, while "IdentificationProblem" is the class that solves the problem.
+
+Info
+----
+Author: Matteo Dalle Vedove (matteodv99tn@gmail.com)
+Date:   13 February 2023
+"""
 import numpy                as np
 import pandas               as pd
 import matplotlib.pyplot    as plt
@@ -179,6 +189,18 @@ class Model:
 
 
 def export_parameters(pars: np.ndarray, mdl: Model) -> None:
+    """ Export the parameters of the model to a JSON file.
+
+    Data are exported in the file "exported_parameters.json".
+    
+    Parameters
+    ----------
+    pars : np.ndarray
+        The parameters to be exported.
+    mdl : Model
+        A Model object from which the name is extracted.
+    """
+
     import json 
 
     if isfile(EXPORT_FILE):
@@ -192,7 +214,19 @@ def export_parameters(pars: np.ndarray, mdl: Model) -> None:
         json.dump(all_params, f, indent=4)
 
 
-def import_parameters(mdl) -> np.ndarray:
+def import_parameters(mdl: Model) -> np.ndarray:
+    """ Import the parameters of the model from a JSON file.
+    
+    Parameters
+    ----------
+    mdl : Model, str
+        A Model object from which the name is extracted, or the name of the model (as a string).
+
+    Returns
+    -------
+    A numpy array of shape (Np, 1) containing the loaded parameters of the model.
+    """
+
     import json
 
     if isinstance(mdl, str):

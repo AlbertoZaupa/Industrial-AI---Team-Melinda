@@ -1,11 +1,9 @@
-""" Inlet temperature test model.
-
-This module is used to develop the model of the inlet temperature of the cell lonely.
+""" Cell temperature test model.
 
 Info
 ----
 Author: Matteo Dalle Vedove (matteodv99tn@gmail.com)
-Date:   07 February 2021
+Date:   12 February 2021
 """
 
 import numpy as np

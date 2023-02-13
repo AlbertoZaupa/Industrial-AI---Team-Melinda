@@ -1,5 +1,4 @@
-"""
-ODE solve module.
+""" ODE solver module.
 
 This module contains a class to solve ODEs using Runge-Kutta tableus; once the tableu is 
 initialized, it can be used to integrate any function of the form 
@@ -8,7 +7,7 @@ where x is the state, u is the input and t is the time.
 
 At the end of the file it's also proposed an example of use, where a car model is integrated.
 
-@author: Matteo Dalle Vedove (matteodv99tn@gmail.com)
+Author: Matteo Dalle Vedove (matteodv99tn@gmail.com)
 """
 
 
@@ -50,20 +49,33 @@ class RKTableu:
         """
         Uses the tableu to integrate the function fun from t0 to t0+h given an input u.
 
-        Args:
-            fun (callable):             function to integrate.
-            x0 (np.array):              initial state.
-            u (np.array):               input of the function.
-            p (np.array):               parameters of the model.
-            t0 (float):                 initial integration time.
-            h (float):                  integration step lenght.
-            compute_jacobian (bool):    if True, the jacobian of fun w.r.t. the parameters p is 
-                                        computed.
-            fun_dp (callable):          function that computes the derivative of fun w.r.t. the 
-                                        parameters p.
+        Parameters
+        ----------
+        fun: callable
+            function to integrate.
+        x0: np.array
+            initial state.
+        u: np.array
+            input of the function.
+        p:  np.array
+            parameters of the model.
+        t0: float
+            initial integration time.
+        h:  float
+            integration step lenght.
+        compute_jacobian: bool, optional    
+            if True, the jacobian of fun w.r.t. the parameters p is computed. Defaults to False.
+        fun_dp: callable          
+            function that computes the derivative of fun w.r.t. the parameters p.
 
-        Returns:    state at t0+h.
-                    jacobian of the integration w.r.t. the parameters (optional).
+        Returns
+        -------
+        The state at t0+h. Optionally the jacobian of the integration w.r.t. the parameters.
+
+        Note
+        ----
+        The signature for both `fun` and `fun_dp` must be of the type
+            fun(x, u, p, t, h)
         """
         
         if not self.is_explicit:
@@ -133,17 +145,20 @@ if __name__ == '__main__':
     Example of use
     
     In this case we integrate a car model; the states are respectively position and velocity, while
-    the input is the acceleration.
+    the input is the acceleration. 
+    In this example the model is parametric, in particular the input "u" can be modified by a 
+    parameter "p".
     """
     import matplotlib.pyplot as plt
 
-    def car(x, u, t):       # car model dynamics
+    def car(x, u, p, t, h):       # car model dynamics
         dx    = np.zeros(2)
         dx[0] = x[1]        # position update
-        dx[1] = u           # velocity update
+        dx[1] = p[0] * u    # velocity update
         return dx
 
     x0 = np.array([0, 0])   # initial state
+    p  = np.array([1])      # parameter
     h  = 0.01               # integration step
     TT = 1000               # number of integration steps
 
@@ -152,7 +167,7 @@ if __name__ == '__main__':
     X  = np.zeros((2, TT))  # state matrix (2 states for TT time steps)
 
     for k in range(TT-1):   # integrate the dynamics
-        X[:,k+1] = RK4_explicit.integrate(car, X[:,k], u[k], k*h, h)
+        X[:,k+1] = RK4_explicit.integrate(car, X[:,k], u[k], p, k*h, h)
 
     fig, ax = plt.subplots(3, 1, sharex=True)
     ax[0].plot(t, X[0,:])

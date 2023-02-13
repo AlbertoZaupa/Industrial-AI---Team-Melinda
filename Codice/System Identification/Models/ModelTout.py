@@ -1,11 +1,11 @@
-""" Inlet temperature test model.
+""" Outlet temperature test model.
 
 This module is used to develop the model of the outlet temperature of the cell lonely.
 
 Info
 ----
 Author: Matteo Dalle Vedove (matteodv99tn@gmail.com)
-Date:   07 February 2021
+Date:   09 February 2021
 """
 
 import numpy as np

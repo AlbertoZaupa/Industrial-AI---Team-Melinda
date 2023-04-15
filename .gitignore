@@ -6,6 +6,8 @@
 *.7z
 Codice/Metodi_Statistici/saved_parameters/*/*cella*
 
+*test*
+*.log
 ### CVS template
 CVS/*
 **/CVS/*
